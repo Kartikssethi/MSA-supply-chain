@@ -1,9 +1,12 @@
 import { Bell, Search, Menu, UserCircle, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { signOut } from '../../utils/auth';
+import { getCurrentUser, signOut } from '../../utils/auth';
 
 export const Header = () => {
   const navigate = useNavigate();
+  const user = getCurrentUser();
+  const displayName = user?.name || 'Admin';
+  const displaySubtext = user?.email || 'Manager';
 
   const onSignOut = () => {
     signOut();
@@ -45,8 +48,8 @@ export const Header = () => {
         <button className="flex items-center gap-3 hover:bg-slate-50 p-1.5 pr-3 rounded-full border border-transparent hover:border-slate-200 transition-all">
           <UserCircle className="w-8 h-8 text-emerald-600" />
           <div className="flex flex-col items-start hidden sm:flex">
-            <span className="text-sm font-medium text-slate-900 leading-none">Admin</span>
-            <span className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Manager</span>
+            <span className="text-sm font-medium text-slate-900 leading-none">{displayName}</span>
+            <span className="text-[10px] text-slate-500 mt-1 tracking-wide">{displaySubtext}</span>
           </div>
         </button>
       </div>
