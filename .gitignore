@@ -1,6 +1,11 @@
 # Dependencies
+node_modules/
 frontend/node_modules/
 backend/venv/
+
+# Tooling cache
+.vite/
+frontend/.vite/
 
 # Production builds
 frontend/dist/
