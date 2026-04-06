@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { RootLayout } from "./components/layout/RootLayout";
+import { RequireAuth } from "./components/auth/RequireAuth";
+import { Auth } from "./pages/Auth";
 import { Dashboard } from "./pages/Dashboard";
 import { Vehicles } from "./pages/Vehicles";
 import { Drivers } from "./pages/Drivers";
@@ -8,6 +10,13 @@ import { Tracking } from "./pages/Tracking";
 import { Maintenance } from "./pages/Maintenance";
 
 export const router = createBrowserRouter([
+  {
+    path: "/auth",
+    Component: Auth,
+  },
+  {
+    Component: RequireAuth,
+    children: [
   {
     path: "/",
     Component: RootLayout,
@@ -18,6 +27,8 @@ export const router = createBrowserRouter([
       { path: "trips", Component: Trips },
       { path: "tracking", Component: Tracking },
       { path: "maintenance", Component: Maintenance },
+    ],
+  },
     ],
   },
 ]);
