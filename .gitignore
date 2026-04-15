@@ -7,6 +7,12 @@ backend/venv/
 .vite/
 frontend/.vite/
 
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
 # Production builds
 frontend/dist/
 frontend/dist-ssr/
