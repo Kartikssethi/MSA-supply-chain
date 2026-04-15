@@ -1,21 +1,43 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.database import Base, engine
 from app.api.routes import router
 from app.kafka.producer import start_producer, stop_producer
 
 app = FastAPI(title="Shipment Service")
 
+# ✅ CORS (VERY IMPORTANT for frontend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # later you can restrict to frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ Create DB tables
 Base.metadata.create_all(bind=engine)
 
+# ✅ Register routes
 app.include_router(router)
 
+
+# ✅ Startup event
 @app.on_event("startup")
 async def startup():
     try:
         await start_producer()
+        print("Kafka producer started")
     except Exception as e:
-        print(f"Error starting Kafka producer: {e}")
+        print("Kafka not available, continuing without it:", e)
 
+
+# ✅ Shutdown event
 @app.on_event("shutdown")
 async def shutdown():
-    await stop_producer()
+    try:
+        await stop_producer()
+        print("Kafka producer stopped")
+    except Exception as e:
+        print("Error stopping Kafka producer:", e)

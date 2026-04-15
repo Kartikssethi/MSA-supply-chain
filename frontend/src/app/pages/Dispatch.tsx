@@ -1,198 +1,165 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Route, UserRound, Truck } from 'lucide-react';
-import { apiAssignTrip, apiGetDispatchBoard } from '../api';
-import { canPerform, getCurrentRole, getCurrentUser } from '../utils/auth';
-import type { Driver, Trip, UserRole, Vehicle } from '../api/mockData';
 
-type DispatchTripRow = Trip & {
-  driverName: string;
-  vehicleNumber: string;
-};
-
-type DispatchSnapshot = {
-  trips: DispatchTripRow[];
-  drivers: Driver[];
-  vehicles: Vehicle[];
+type Shipment = {
+  id: string;
+  origin: string;
+  destination: string;
+  status: string;
 };
 
 export const Dispatch = () => {
-  const [snapshot, setSnapshot] = useState<DispatchSnapshot | null>(null);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTripId, setSelectedTripId] = useState('');
-  const [selectedDriverId, setSelectedDriverId] = useState('');
-  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [creating, setCreating] = useState(false); // 🔥 prevent spam
 
-  const currentUser = getCurrentUser();
-  const actor = currentUser?.name || 'Unknown User';
-  const actorRole = getCurrentRole();
-  const canAssign = canPerform('dispatch:assign');
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
 
-  const loadDispatchBoard = async () => {
-    setLoading(true);
-    const data = await apiGetDispatchBoard();
-    setSnapshot(data as DispatchSnapshot);
-    setLoading(false);
+  const API_URL = "http://127.0.0.1:8000";
+
+  const loadShipments = async () => {
+  try {
+    const res = await fetch(`${API_URL}/shipments`);
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch");
+    }
+
+    const data = await res.json();
+    setShipments(data);
+
+  } catch (err) {
+    console.error("ERROR FETCHING:", err);
+  } finally {
+    setLoading(false); // 🔥 ALWAYS run this
+  }
+}; 
+
+  const createShipment = async () => {
+  if (!origin || !destination || creating) return;
+
+  setCreating(true);
+
+  // 🔥 create temporary shipment (instant UI)
+  const tempShipment = {
+    id: "temp-" + Date.now(),
+    origin,
+    destination,
+    status: "pending"
   };
 
-  useEffect(() => {
-    loadDispatchBoard();
-  }, []);
+  // 🔥 show immediately
+  setShipments(prev => [tempShipment, ...prev]);
 
-  const onAssign = async () => {
-    if (!selectedTripId || !selectedDriverId || !selectedVehicleId) return;
-    if (!canAssign) return;
+  try {
+    const res = await fetch(`${API_URL}/shipments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ origin, destination })
+    });
 
-    await apiAssignTrip(
-      selectedTripId,
-      selectedDriverId,
-      selectedVehicleId,
-      actor,
-      actorRole as UserRole,
+    const realShipment = await res.json();
+
+    // 🔥 replace temp with real one
+    setShipments(prev =>
+      prev.map(s => s.id === tempShipment.id ? realShipment : s)
     );
 
-    setSelectedTripId('');
-    setSelectedDriverId('');
-    setSelectedVehicleId('');
-    await loadDispatchBoard();
-  };
+  } catch (err) {
+    console.error(err);
+
+    // ❌ rollback if failed
+    setShipments(prev => prev.filter(s => s.id !== tempShipment.id));
+  } finally {
+    setCreating(false);
+    setOrigin('');
+    setDestination('');
+  }
+};
+
+  useEffect(() => {
+    const init = async () => {
+      await loadShipments();
+      setLoading(false);
+    };
+    init();
+  }, []);
 
   if (loading) {
-    return <div className="animate-pulse text-slate-600 font-medium">Loading dispatch board...</div>;
-  }
-
-  if (!snapshot) {
-    return <div className="text-slate-600">Unable to load dispatch board.</div>;
+    return <div className="p-4 text-slate-600">Loading shipments...</div>;
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full">
-      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/30 p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Dispatch Board</h2>
-            <p className="mt-1 text-sm text-slate-600">Assign planned trips to available drivers and fleet resources.</p>
-          </div>
-          <button
-            onClick={loadDispatchBoard}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
 
-      {!canAssign && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Current role is read-only for dispatch assignments.
-        </div>
-      )}
+      <h1 className="text-2xl font-bold">Dispatch (Shipments)</h1>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">Assignment Panel</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <select
-            value={selectedTripId}
-            onChange={(event) => setSelectedTripId(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
-          >
-            <option value="">Select trip</option>
-            {snapshot.trips.map((trip: DispatchTripRow) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.id.toUpperCase()} - {trip.pickup} to {trip.destination}
-              </option>
-            ))}
-          </select>
+      {/* 🔹 Create Shipment */}
+      <div className="bg-white p-4 rounded-xl shadow space-y-3">
+        <h2 className="font-semibold">Create Shipment</h2>
 
-          <select
-            value={selectedDriverId}
-            onChange={(event) => setSelectedDriverId(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
-          >
-            <option value="">Select driver</option>
-            {snapshot.drivers.map((driver: Driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.name} ({driver.status})
-              </option>
-            ))}
-          </select>
+        <input
+          type="text"
+          placeholder="Origin"
+          value={origin}
+          onChange={(e) => setOrigin(e.target.value)}
+          className="border p-2 rounded w-full"
+        />
 
-          <select
-            value={selectedVehicleId}
-            onChange={(event) => setSelectedVehicleId(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
-          >
-            <option value="">Select vehicle</option>
-            {snapshot.vehicles.map((vehicle: Vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.number} ({vehicle.status})
-              </option>
-            ))}
-          </select>
-        </div>
+        <input
+          type="text"
+          placeholder="Destination"
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
+          className="border p-2 rounded w-full"
+        />
 
         <button
-          onClick={onAssign}
-          disabled={!canAssign || !selectedTripId || !selectedDriverId || !selectedVehicleId}
-          className="mt-4 rounded-full border border-emerald-500/40 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={createShipment}
+          disabled={creating || !origin || !destination}
+          className={`
+            px-4 py-2 rounded text-white transition
+            ${creating || !origin || !destination
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-500 cursor-pointer"}
+          `}
         >
-          Assign Trip
+          {creating ? "Creating..." : "Create Shipment"}
         </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">Planned Trips</h3>
-        </div>
+      {/* 🔹 Shipment List */}
+      <div className="bg-white p-4 rounded-xl shadow">
+        <h2 className="font-semibold mb-3">All Shipments</h2>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-[900px] w-full border-collapse text-left">
+        {shipments.length === 0 ? (
+          <p>No shipments found</p>
+        ) : (
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-500">
-                <th className="px-5 py-4 font-semibold">Trip</th>
-                <th className="px-5 py-4 font-semibold">Route</th>
-                <th className="px-5 py-4 font-semibold">Current Driver</th>
-                <th className="px-5 py-4 font-semibold">Current Vehicle</th>
-                <th className="px-5 py-4 font-semibold">Status</th>
+              <tr className="border-b">
+                <th>ID</th>
+                <th>Origin</th>
+                <th>Destination</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {snapshot.trips.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
-                    No planned trips available for assignment.
-                  </td>
+            <tbody>
+              {shipments.map((s) => (
+                <tr key={s.id} className="border-b">
+                  <td>{s.id}</td>
+                  <td>{s.origin}</td>
+                  <td>{s.destination}</td>
+                  <td>{s.status}</td>
                 </tr>
-              ) : (
-                snapshot.trips.map((trip: DispatchTripRow) => (
-                  <tr key={trip.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-5 py-4 text-sm font-semibold text-slate-800">{trip.id.toUpperCase()}</td>
-                    <td className="px-5 py-4 text-sm text-slate-700">
-                      <span className="inline-flex items-center gap-2">
-                        <Route className="h-3.5 w-3.5 text-slate-400" />
-                        {trip.pickup} to {trip.destination}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700">
-                      <span className="inline-flex items-center gap-2">
-                        <UserRound className="h-3.5 w-3.5 text-slate-400" />
-                        {trip.driverName}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700">
-                      <span className="inline-flex items-center gap-2">
-                        <Truck className="h-3.5 w-3.5 text-slate-400" />
-                        {trip.vehicleNumber}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{trip.status}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
+
     </div>
   );
 };
