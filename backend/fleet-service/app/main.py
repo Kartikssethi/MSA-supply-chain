@@ -12,7 +12,7 @@ from sqlalchemy import text
 from app.database import engine, Base
 import app.models  # registers all models with Base.metadata
 from app.api.routes import router as fleet_router
-from app.redis_client import close_redis
+from app.redis_client import close_redis, startup_redis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
         await conn.run_sync(Base.metadata.create_all)
     logger.info("✅ Database connected. Tables ready.")
+    await startup_redis()
     yield
     # Shutdown
     await close_redis()
@@ -34,6 +35,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Fleet Service", lifespan=lifespan)
+
+# CORS — allow frontend to talk to this service
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(fleet_router, prefix="/fleet", tags=["Fleet"])
 
