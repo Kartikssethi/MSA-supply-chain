@@ -13,11 +13,6 @@ type AuthUser = {
   accessToken: string;
 };
 
-type GooglePayload = {
-  name?: string;
-  email?: string;
-};
-
 const hasWindow = typeof window !== "undefined";
 
 const ROLE_PERMISSIONS: Record<UserRole, PermissionAction[]> = {
