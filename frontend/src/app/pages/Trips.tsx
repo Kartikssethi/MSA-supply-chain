@@ -1,15 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, ArrowRight, Calendar, Navigation } from 'lucide-react';
 import { apiGetTrips, apiCreateTrip, apiGetVehicles, apiGetDrivers } from '../api';
 import type { Trip, Vehicle, Driver } from '../api/mockData';
 import { cn } from '../utils/classnames';
 
+type TripRow = Trip & {
+  driverName: string;
+  vehicleNumber: string;
+};
+
 export const Trips = () => {
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<TripRow[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | Trip['status']>('All');
+
+  const filteredTrips = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return trips.filter((trip) => {
+      const matchesSearch = !normalizedSearch
+        || trip.pickup.toLowerCase().includes(normalizedSearch)
+        || trip.destination.toLowerCase().includes(normalizedSearch)
+        || trip.driverName.toLowerCase().includes(normalizedSearch)
+        || trip.vehicleNumber.toLowerCase().includes(normalizedSearch)
+        || trip.id.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus = statusFilter === 'All' || trip.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [trips, searchTerm, statusFilter]);
 
   useEffect(() => {
     loadData();
@@ -63,13 +86,36 @@ export const Trips = () => {
             <input
               type="text"
               placeholder="Search location..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
               className="pl-10 pr-4 py-2 w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-full text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 placeholder:text-slate-400 transition-all"
             />
           </div>
-          <button className="flex items-center gap-2 px-5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-sm font-medium text-slate-700 transition-colors">
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as 'All' | Trip['status'])}
+                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none"
+                aria-label="Filter trips by status"
+              >
+                <option value="All">All statuses</option>
+                <option value="Planned">Planned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('All');
+              }}
+              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto w-full">
@@ -89,7 +135,13 @@ export const Trips = () => {
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium animate-pulse">Loading...</td>
                 </tr>
-              ) : trips.map((trip) => (
+              ) : filteredTrips.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                    No trips matched your current filters.
+                  </td>
+                </tr>
+              ) : filteredTrips.map((trip) => (
                 <tr key={trip.id} className="hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-4 text-sm font-mono text-slate-500">{trip.id}</td>
                   <td className="px-6 py-4">

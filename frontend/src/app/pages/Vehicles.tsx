@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Trash2, Edit2 } from 'lucide-react';
 import { apiGetVehicles, apiDeleteVehicle, apiCreateVehicle } from '../api';
 import type { Vehicle } from '../api/mockData';
@@ -8,6 +8,23 @@ export const Vehicles = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | Vehicle['status']>('All');
+
+  const filteredVehicles = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return vehicles.filter((vehicle) => {
+      const matchesSearch = !normalizedSearch
+        || vehicle.id.toLowerCase().includes(normalizedSearch)
+        || vehicle.number.toLowerCase().includes(normalizedSearch)
+        || vehicle.type.toLowerCase().includes(normalizedSearch)
+        || vehicle.capacity.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus = statusFilter === 'All' || vehicle.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [vehicles, searchTerm, statusFilter]);
 
   useEffect(() => {
     loadVehicles();
@@ -65,13 +82,36 @@ export const Vehicles = () => {
             <input
               type="text"
               placeholder="Search vehicles..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
               className="pl-10 pr-4 py-2 w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-full text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 placeholder:text-slate-400 transition-all"
             />
           </div>
-          <button className="flex items-center gap-2 px-5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-sm font-medium text-slate-700 transition-colors">
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as 'All' | Vehicle['status'])}
+                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none"
+                aria-label="Filter vehicles by status"
+              >
+                <option value="All">All statuses</option>
+                <option value="Available">Available</option>
+                <option value="In Transit">In Transit</option>
+                <option value="Maintenance">Maintenance</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('All');
+              }}
+              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto w-full">
@@ -91,7 +131,13 @@ export const Vehicles = () => {
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium animate-pulse">Loading...</td>
                 </tr>
-              ) : vehicles.map((vehicle) => (
+              ) : filteredVehicles.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                    No vehicles matched your current filters.
+                  </td>
+                </tr>
+              ) : filteredVehicles.map((vehicle) => (
                 <tr key={vehicle.id} className="hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-4 text-sm text-slate-500 font-mono">{vehicle.id}</td>
                   <td className="px-6 py-4 text-sm text-slate-900 font-medium">{vehicle.number}</td>

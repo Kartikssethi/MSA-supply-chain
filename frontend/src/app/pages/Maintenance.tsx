@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Wrench, Plus, Calendar, AlertTriangle, FileText, CheckCircle2 } from 'lucide-react';
 import { apiGetMaintenance, apiCreateMaintenance, apiGetVehicles } from '../api';
-import type { MaintenanceRecord, Vehicle } from '../api/mockData';
-import { cn } from '../utils/classnames';
+import type { Vehicle } from '../api/mockData';
+import { canPerform, getCurrentRole, getCurrentUser } from '../utils/auth';
 
 export const Maintenance = () => {
   const [records, setRecords] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const currentUser = getCurrentUser();
+  const canLogMaintenance = canPerform('maintenance:create');
 
   useEffect(() => {
     loadData();
@@ -24,6 +26,7 @@ export const Maintenance = () => {
 
   const handleAddRecord = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canLogMaintenance) return;
     const formData = new FormData(e.currentTarget);
     const newRecord = {
       vehicleId: formData.get('vehicleId') as string,
@@ -31,7 +34,11 @@ export const Maintenance = () => {
       description: formData.get('description') as string,
       cost: Number(formData.get('cost')),
     };
-    await apiCreateMaintenance(newRecord);
+    await apiCreateMaintenance(
+      newRecord,
+      currentUser?.name || 'Unknown User',
+      getCurrentRole(),
+    );
     setIsAddModalOpen(false);
     loadData();
   };
@@ -44,13 +51,20 @@ export const Maintenance = () => {
           <p className="text-slate-500 text-sm mt-1">Service histories and scheduled work.</p>
         </div>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => canLogMaintenance && setIsAddModalOpen(true)}
+          disabled={!canLogMaintenance}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full font-medium transition-all text-sm shadow-lg hover:shadow-xl border border-emerald-500/50"
         >
           <Plus className="w-4 h-4" />
           Log Service
         </button>
       </div>
+
+      {!canLogMaintenance && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Your role is read-only for maintenance logging.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 p-6 rounded-2xl flex items-start gap-4 relative overflow-hidden group shadow-sm">

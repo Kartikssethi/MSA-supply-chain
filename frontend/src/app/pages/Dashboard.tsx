@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Truck, Route, Users, Wrench, TrendingUp, TrendingDown } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend, ComposedChart, Line } from 'recharts';
 import { apiGetDashboardStats } from '../api';
 import { cn } from '../utils/classnames';
 
@@ -9,6 +9,29 @@ const COLORS = ['#10b981', '#3b82f6', '#22d3ee', '#e2e8f0'];
 export const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [visibleDays, setVisibleDays] = useState(7);
+
+  const filteredTripsPerDayData = stats
+    ? stats.tripsPerDayData.slice(-visibleDays)
+    : [];
+
+  const filteredDeliveryPerformanceData = stats
+    ? stats.deliveryPerformanceData.slice(-Math.max(2, Math.ceil(visibleDays / 2)))
+    : [];
+
+  const operationsPulseData = stats
+    ? filteredTripsPerDayData.map((day: any, index: number) => {
+        const weekData = filteredDeliveryPerformanceData[index % filteredDeliveryPerformanceData.length];
+        const completionRate = weekData ? weekData.onTime : 90;
+
+        return {
+          name: day.name,
+          planned: day.trips + 2,
+          completed: day.trips,
+          completionRate,
+        };
+      })
+    : [];
 
   useEffect(() => {
     apiGetDashboardStats().then(data => {
@@ -21,9 +44,28 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h2>
-        <p className="text-slate-500 text-sm mt-1">Real-time metrics and fleet status.</p>
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h2>
+          <p className="text-slate-500 text-sm mt-1">Real-time metrics and fleet status.</p>
+        </div>
+
+        <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
+            <span className="text-slate-500">Data Window</span>
+            <span className="text-emerald-700">Last {visibleDays} days</span>
+          </div>
+          <input
+            type="range"
+            min={3}
+            max={7}
+            step={1}
+            value={visibleDays}
+            onChange={(event) => setVisibleDays(Number(event.target.value))}
+            className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gradient-to-r from-emerald-300 via-emerald-400 to-cyan-400 accent-emerald-600"
+            aria-label="Filter dashboard data by number of days"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -38,7 +80,7 @@ export const Dashboard = () => {
           <h3 className="text-xs font-semibold mb-6 text-slate-500 uppercase tracking-widest">Trips per Day</h3>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.tripsPerDayData}>
+              <AreaChart data={filteredTripsPerDayData}>
                 <defs>
                   <linearGradient id="colorTrips" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -74,7 +116,7 @@ export const Dashboard = () => {
                   dataKey="value"
                   stroke="none"
                 >
-                  {stats.vehicleUtilizationData.map((entry: any, index: number) => (
+                  {stats.vehicleUtilizationData.map((_: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -95,7 +137,7 @@ export const Dashboard = () => {
           <h3 className="text-xs font-semibold mb-6 text-slate-500 uppercase tracking-widest">Delivery Performance</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.deliveryPerformanceData}>
+              <BarChart data={filteredDeliveryPerformanceData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
@@ -107,6 +149,65 @@ export const Dashboard = () => {
                 <Bar dataKey="onTime" name="On Time" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
                 <Bar dataKey="delayed" name="Delayed" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
               </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="lg:col-span-3 rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/40 to-cyan-50/40 p-6 shadow-sm w-full min-w-0">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-semibold text-emerald-700 uppercase tracking-widest">Operations Pulse</h3>
+              <p className="mt-1 text-sm text-slate-600">Planned vs completed trips with daily completion rate.</p>
+            </div>
+            <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+              Live Snapshot
+            </span>
+          </div>
+
+          <div className="h-80 w-full rounded-xl border border-white/70 bg-white/80 p-3 backdrop-blur-sm">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={operationsPulseData}>
+                <defs>
+                  <linearGradient id="pulseBars" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.85} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#dbeafe" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={8} />
+                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={[60, 100]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#0f766e', fontSize: 12 }}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <Tooltip
+                  cursor={{ fill: '#ecfeff', opacity: 0.55 }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#dbeafe', color: '#1a1a1a', borderRadius: '10px' }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'completionRate') return [`${value}%`, 'Completion Rate'];
+                    if (name === 'planned') return [value, 'Planned Trips'];
+                    return [value, 'Completed Trips'];
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px', color: '#64748b', paddingTop: '8px' }} iconType="circle" />
+                <Bar yAxisId="left" dataKey="planned" name="Planned Trips" fill="#cbd5e1" radius={[8, 8, 0, 0]} barSize={18} />
+                <Bar yAxisId="left" dataKey="completed" name="Completed Trips" fill="url(#pulseBars)" radius={[8, 8, 0, 0]} barSize={18} />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="completionRate"
+                  name="Completion Rate"
+                  stroke="#0f766e"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, strokeWidth: 2, fill: '#ffffff' }}
+                  activeDot={{ r: 5 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>

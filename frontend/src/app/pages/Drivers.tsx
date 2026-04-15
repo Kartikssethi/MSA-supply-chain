@@ -7,6 +7,7 @@ import { cn } from '../utils/classnames';
 export const Drivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
 
   useEffect(() => {
     apiGetDrivers().then(data => {
@@ -97,7 +98,10 @@ export const Drivers = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-sm font-medium text-emerald-600 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setSelectedDriver(driver)}
+                      className="text-sm font-medium text-emerald-600 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       View
                     </button>
                   </td>
@@ -107,6 +111,61 @@ export const Drivers = () => {
           </table>
         </div>
       </div>
+
+      {selectedDriver && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <h3 className="text-lg font-semibold text-slate-900">Driver Details</h3>
+              <button
+                onClick={() => setSelectedDriver(null)}
+                className="text-slate-500 hover:text-slate-900 transition-colors text-2xl leading-none"
+                aria-label="Close driver details"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Name</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{selectedDriver.name}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">License Number</p>
+                <p className="mt-1 text-sm font-mono text-slate-700">{selectedDriver.licenseNumber}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Phone</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedDriver.phone}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Assigned Vehicle</p>
+                <p className="mt-1 text-sm text-slate-700">
+                  {selectedDriver.assignedVehicleId ? selectedDriver.assignedVehicleId.toUpperCase() : 'Unassigned'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Status</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedDriver.status}</p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setSelectedDriver(null)}
+                  className="px-5 py-2.5 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

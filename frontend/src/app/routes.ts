@@ -8,6 +8,8 @@ import { Drivers } from "./pages/Drivers";
 import { Trips } from "./pages/Trips";
 import { Tracking } from "./pages/Tracking";
 import { Maintenance } from "./pages/Maintenance";
+import { Operations } from "./pages/Operations";
+import { Dispatch } from "./pages/Dispatch";
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +29,8 @@ export const router = createBrowserRouter([
       { path: "trips", Component: Trips },
       { path: "tracking", Component: Tracking },
       { path: "maintenance", Component: Maintenance },
+      { path: "operations", Component: Operations },
+      { path: "dispatch", Component: Dispatch },
     ],
   },
     ],

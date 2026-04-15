@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import { LayoutDashboard, Truck, Users, Map, Wrench, Route } from 'lucide-react';
+import { LayoutDashboard, Truck, Users, Map, Wrench, Route, Radar, ClipboardCheck } from 'lucide-react';
 import { cn } from '../../utils/classnames';
 
 const navItems = [
@@ -8,12 +8,19 @@ const navItems = [
   { name: 'Drivers', path: '/drivers', icon: Users },
   { name: 'Trips', path: '/trips', icon: Route },
   { name: 'Tracking', path: '/tracking', icon: Map },
+  { name: 'Dispatch', path: '/dispatch', icon: ClipboardCheck },
   { name: 'Maintenance', path: '/maintenance', icon: Wrench },
+  { name: 'Operations', path: '/operations', icon: Radar },
 ];
 
-export const Sidebar = () => {
+type SidebarProps = {
+  className?: string;
+  onNavigate?: () => void;
+};
+
+export const Sidebar = ({ className, onNavigate }: SidebarProps) => {
   return (
-    <aside className="w-64 bg-[#f8faf9] border-r border-slate-200 flex flex-col hidden md:flex flex-shrink-0 shadow-sm">
+    <aside className={cn("w-64 bg-[#f8faf9] border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm", className)}>
       <div className="p-6">
         <h1 className="text-xl font-bold text-slate-900 tracking-wide flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)]">
@@ -29,6 +36,7 @@ export const Sidebar = () => {
             <li key={item.path}>
               <NavLink
                 to={item.path}
+                onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm border border-transparent",

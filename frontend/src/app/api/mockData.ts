@@ -15,6 +15,8 @@ export interface Driver {
   status: 'Active' | 'On Leave' | 'Inactive';
 }
 
+export type UserRole = 'Admin' | 'Fleet Manager' | 'Dispatcher' | 'Viewer';
+
 export interface Trip {
   id: string;
   driverId: string;
@@ -40,6 +42,37 @@ export interface Location {
   lng: number;
   speed: number;
   eta: string;
+}
+
+export interface ExceptionAlert {
+  id: string;
+  tripId: string;
+  vehicleId: string;
+  severity: 'Critical' | 'High' | 'Medium';
+  type: 'Delay Risk' | 'Route Deviation' | 'Idle Breach' | 'Compliance Risk';
+  status: 'Open' | 'Investigating' | 'Resolved';
+  message: string;
+  etaImpactMinutes: number;
+  createdAt: string;
+}
+
+export interface OperationsKpiSnapshot {
+  onTimeRate: number;
+  activeTrips: number;
+  exceptionsOpen: number;
+  avgDelayMinutes: number;
+  utilizationRate: number;
+}
+
+export interface AuditEntry {
+  id: string;
+  actor: string;
+  actorRole: UserRole;
+  action: 'Exception Updated' | 'Trip Assigned' | 'Maintenance Logged';
+  entityType: 'Exception' | 'Trip' | 'Maintenance';
+  entityId: string;
+  summary: string;
+  timestamp: string;
 }
 
 export const initialVehicles: Vehicle[] = [
@@ -72,6 +105,63 @@ export const initialMaintenance: MaintenanceRecord[] = [
 export const initialLocations: Location[] = [
   { id: 'l1', vehicleId: 'v1', lat: 41.5, lng: -73.0, speed: 65, eta: '2 hours' },
   { id: 'l2', vehicleId: 'v5', lat: 42.0, lng: -85.5, speed: 55, eta: '4 hours' },
+];
+
+export const initialExceptionAlerts: ExceptionAlert[] = [
+  {
+    id: 'e1',
+    tripId: 't1',
+    vehicleId: 'v1',
+    severity: 'High',
+    type: 'Delay Risk',
+    status: 'Open',
+    message: 'Traffic congestion is likely to delay arrival into Boston corridor.',
+    etaImpactMinutes: 26,
+    createdAt: '2026-04-07T09:20:00Z',
+  },
+  {
+    id: 'e2',
+    tripId: 't2',
+    vehicleId: 'v5',
+    severity: 'Critical',
+    type: 'Route Deviation',
+    status: 'Investigating',
+    message: 'Vehicle diverted 13 km from planned lane sequence.',
+    etaImpactMinutes: 38,
+    createdAt: '2026-04-07T08:55:00Z',
+  },
+  {
+    id: 'e3',
+    tripId: 't3',
+    vehicleId: 'v2',
+    severity: 'Medium',
+    type: 'Idle Breach',
+    status: 'Open',
+    message: 'Engine idle duration exceeded threshold at pickup yard.',
+    etaImpactMinutes: 12,
+    createdAt: '2026-04-07T10:05:00Z',
+  },
+];
+
+export const initialOperationsKpiSnapshot: OperationsKpiSnapshot = {
+  onTimeRate: 93,
+  activeTrips: 2,
+  exceptionsOpen: 2,
+  avgDelayMinutes: 18,
+  utilizationRate: 74,
+};
+
+export const initialAuditTrail: AuditEntry[] = [
+  {
+    id: 'a1',
+    actor: 'System Seeder',
+    actorRole: 'Admin',
+    action: 'Exception Updated',
+    entityType: 'Exception',
+    entityId: 'e2',
+    summary: 'Exception e2 moved to Investigating during initial simulation.',
+    timestamp: '2026-04-07T08:56:00Z',
+  },
 ];
 
 // Dashboard Chart Data
