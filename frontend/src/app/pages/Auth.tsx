@@ -167,9 +167,9 @@ export const Auth = () => {
                   size="large"
                   text={mode === "signin" ? "signin_with" : "signup_with"}
                   shape="pill"
-                  onSuccess={(credentialResponse) => {
+                  onSuccess={async (credentialResponse) => {
                     const credential = credentialResponse.credential;
-                    if (!credential || !signInWithGoogleCredential(credential)) {
+                    if (!credential || !(await signInWithGoogleCredential(credential))) {
                       setError("Google authentication failed. Please try again.");
                       return;
                     }
