@@ -15,7 +15,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379").strip()
 
 # Try to connect to Redis; fall back to in-memory locks if it fails
 _redis_client = None
