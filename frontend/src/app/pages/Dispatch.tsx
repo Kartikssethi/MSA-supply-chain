@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-
+import { use, useEffect, useState } from 'react';
+import { supabase } from "../supabase";
 type Shipment = {
   id: string;
   origin: string;
@@ -19,7 +19,20 @@ export const Dispatch = () => {
 
   const loadShipments = async () => {
   try {
-    const res = await fetch(`${API_URL}/shipments`);
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.error("User not logged in");
+      return;
+    }
+
+    const res = await fetch(`${API_URL}/shipments`, {
+      headers: {
+        "X-User": user.id
+      }
+    });
 
     if (!res.ok) {
       throw new Error("Failed to fetch");
@@ -31,9 +44,9 @@ export const Dispatch = () => {
   } catch (err) {
     console.error("ERROR FETCHING:", err);
   } finally {
-    setLoading(false); // 🔥 ALWAYS run this
+    setLoading(false);
   }
-}; 
+};
 
   const createShipment = async () => {
   if (!origin || !destination || creating) return;
@@ -52,10 +65,19 @@ export const Dispatch = () => {
   setShipments(prev => [tempShipment, ...prev]);
 
   try {
+    const {
+  data: { user }
+} = await supabase.auth.getUser();
+
+if (!user) {
+  alert("User not logged in");
+  return;
+}
     const res = await fetch(`${API_URL}/shipments`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-User": user.id
       },
       body: JSON.stringify({ origin, destination })
     });
@@ -82,7 +104,7 @@ export const Dispatch = () => {
   useEffect(() => {
     const init = async () => {
       await loadShipments();
-      setLoading(false);
+      // setLoading(false);
     };
     init();
   }, []);

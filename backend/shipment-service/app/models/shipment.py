@@ -11,3 +11,4 @@ class Shipment(Base):
     destination = Column(String, nullable=False)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(String, index=True)

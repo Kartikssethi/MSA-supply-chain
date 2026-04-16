@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.schemas.shipment import ShipmentCreate, ShipmentResponse
@@ -14,10 +14,15 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/shipments", response_model=ShipmentResponse)
-async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
+def get_current_user(x_user: str = Header(None)):
+    return x_user
 
-    new_shipment = create_shipment(db, shipment.origin, shipment.destination)
+@router.post("/shipments", response_model=ShipmentResponse)
+async def create(shipment: ShipmentCreate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user)):
+
+    new_shipment = create_shipment(db, shipment.origin, shipment.destination, user_id)
 
     # Kafka event
     await send_event("shipment.created", {
@@ -30,5 +35,5 @@ async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/shipments", response_model=list[ShipmentResponse])
-def get_all(db: Session = Depends(get_db)):
-    return get_all_shipments(db)
+def get_all(db: Session = Depends(get_db),  user_id: str = Depends(get_current_user)):
+    return get_all_shipments(db, user_id)
