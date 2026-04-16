@@ -1,3 +1,5 @@
+import { use } from "react";
+
 const AUTH_STORAGE_KEY = "fleetflow.auth.user";
 
 export type UserRole = 'Admin' | 'Fleet Manager' | 'Dispatcher' | 'Viewer';
@@ -89,6 +91,7 @@ export const signIn = async (email: string, password: string): Promise<void> => 
 
     if (hasWindow) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      window.localStorage.setItem("user_id", user.id);
     }
   } catch (error: any) {
     console.error("[Auth] Login fetch error:", error);
@@ -130,6 +133,7 @@ export const signUp = async (name: string, email: string, password: string): Pro
 
     if (hasWindow) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      window.localStorage.setItem("user_id", user.id);
     }
   } catch (error: any) {
     console.error("[Auth] Fetch error details:", error);
@@ -175,4 +179,5 @@ export const signInWithGoogleCredential = async (credential: string): Promise<vo
   };
 
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  window.localStorage.setItem("user_id", user.id);
 };

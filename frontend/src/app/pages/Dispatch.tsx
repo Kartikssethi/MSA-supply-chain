@@ -1,112 +1,137 @@
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from "../supabase";
+
 type Shipment = {
   id: string;
   origin: string;
   destination: string;
   status: string;
+  user_id?: string;
+  created_at?: string;
 };
 
 export const Dispatch = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false); // 🔥 prevent spam
+  const [creating, setCreating] = useState(false);
 
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
 
   const API_URL = "http://127.0.0.1:8000";
 
+  // 🔹 Load shipments for logged-in user
   const loadShipments = async () => {
-  try {
-    const {
-      data: { user }
-    } = await supabase.auth.getUser();
+    try {
+      const userData = localStorage.getItem("user_id")
 
-    if (!user) {
-      console.error("User not logged in");
-      return;
-    }
-
-    const res = await fetch(`${API_URL}/shipments`, {
-      headers: {
-        "X-User": user.id
+      if (!userData) {
+        console.error("User not logged in");
+        setLoading(false);
+        return;
       }
-    });
+      const user = userData
 
-    if (!res.ok) {
-      throw new Error("Failed to fetch");
+      const res = await fetch(`${API_URL}/shipments?user_id=${user}`);
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch shipments");
+      }
+
+      const data = await res.json();
+      setShipments(data);
+
+    } catch (err) {
+      console.error("ERROR FETCHING:", err);
+    } finally {
+      setLoading(false);
     }
-
-    const data = await res.json();
-    setShipments(data);
-
-  } catch (err) {
-    console.error("ERROR FETCHING:", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const createShipment = async () => {
-  if (!origin || !destination || creating) return;
-
-  setCreating(true);
-
-  // 🔥 create temporary shipment (instant UI)
-  const tempShipment = {
-    id: "temp-" + Date.now(),
-    origin,
-    destination,
-    status: "pending"
   };
 
-  // 🔥 show immediately
-  setShipments(prev => [tempShipment, ...prev]);
+  // 🔹 Create shipment
+  const createShipment = async () => {
+    if (!origin || !destination || creating) return;
 
-  try {
-    const {
-  data: { user }
-} = await supabase.auth.getUser();
+    setCreating(true);
 
-if (!user) {
-  alert("User not logged in");
-  return;
-}
-    const res = await fetch(`${API_URL}/shipments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User": user.id
-      },
-      body: JSON.stringify({ origin, destination })
-    });
+    // temporary UI item
+    const tempShipment: Shipment = {
+      id: "temp-" + Date.now(),
+      origin,
+      destination,
+      status: "pending"
+    };
 
-    const realShipment = await res.json();
+    setShipments(prev => [tempShipment, ...prev]);
 
-    // 🔥 replace temp with real one
-    setShipments(prev =>
-      prev.map(s => s.id === tempShipment.id ? realShipment : s)
-    );
+    try {
+      const userData = localStorage.getItem("user_id")
 
-  } catch (err) {
-    console.error(err);
+      if (!userData) {
+        alert("User not logged in");
+        setCreating(false);
+        return;
+      }
 
-    // ❌ rollback if failed
-    setShipments(prev => prev.filter(s => s.id !== tempShipment.id));
-  } finally {
-    setCreating(false);
-    setOrigin('');
-    setDestination('');
-  }
-};
+      const user_id = userData;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const res = await fetch(`${API_URL}/shipments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          origin,
+          destination,
+          user_id
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        const error = await res.text();
+        console.error("API Error:", error);
+        throw new Error(`Failed to create shipment: ${res.status}`);
+      }
+
+      const realShipment = await res.json();
+      console.log("Shipment created:", realShipment);
+
+      // replace temp with real
+      setShipments(prev =>
+        prev.map(s => s.id === tempShipment.id ? realShipment : s)
+      );
+
+      // Clear fields immediately
+      setOrigin('');
+      setDestination('');
+
+    } catch (err) {
+      console.error("Error creating shipment:", err);
+
+      // rollback
+      setShipments(prev => prev.filter(s => s.id !== tempShipment.id));
+      alert("Failed to create shipment. Check console for details.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => {
-    const init = async () => {
-      await loadShipments();
-      // setLoading(false);
-    };
-    init();
+    loadShipments();
+
+    // 🔹 Auto-sync with database every 3 seconds
+    const syncInterval = setInterval(() => {
+      loadShipments();
+    }, 3000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(syncInterval);
   }, []);
 
   if (loading) {
