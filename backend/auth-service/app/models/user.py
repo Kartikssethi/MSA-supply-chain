@@ -17,5 +17,6 @@ class User(Base):
     name = Column(String, nullable=True)
     picture = Column(String, nullable=True)       # Google profile photo URL
     google_id = Column(String, unique=True, nullable=True)  # Google "sub" field
+    hashed_password = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

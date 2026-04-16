@@ -15,12 +15,75 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.google import verify_google_token
 from app.auth.jwt import create_access_token, decode_access_token
+from app.auth.password import get_password_hash, verify_password
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import GoogleLoginRequest, TokenResponse, UserResponse
+from app.schemas.user import (
+    GoogleLoginRequest,
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserResponse,
+)
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/register
+# ---------------------------------------------------------------------------
+@router.post("/register", response_model=TokenResponse)
+async def register(body: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
+    """Create a new user with email and password."""
+    # Check if email exists
+    result = await db.execute(select(User).where(User.email == body.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered."
+        )
+
+    # Hash password and save user
+    hashed_pw = get_password_hash(body.password)
+    user = User(
+        id=uuid.uuid4(),
+        email=body.email,
+        name=body.name,
+        hashed_password=hashed_pw,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    # Issue JWT
+    token = create_access_token(user_id=str(user.id), email=user.email)
+    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/login
+# ---------------------------------------------------------------------------
+@router.post("/login", response_model=TokenResponse)
+async def login(body: UserLoginRequest, db: AsyncSession = Depends(get_db)):
+    """Authenticate with email and password."""
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+        )
+
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+        )
+
+    # Issue JWT
+    token = create_access_token(user_id=str(user.id), email=user.email)
+    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 
 
 # ---------------------------------------------------------------------------

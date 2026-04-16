@@ -25,6 +25,14 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
         # Auto-create tables if they don't exist
         await conn.run_sync(Base.metadata.create_all)
+
+        # Manually ensure hashed_password exists (Base.metadata.create_all won't add it to existing tables)
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR"))
+            logger.info("✅ Database schema verified (hashed_password column ensured).")
+        except Exception as e:
+            logger.warning(f"Could not verify/add hashed_password column: {e}")
+
     logger.info("✅ Database connected. Tables ready.")
     yield
     await engine.dispose()

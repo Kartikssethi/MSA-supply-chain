@@ -3,7 +3,7 @@
  * Replaces mock data for vehicles and drivers.
  */
 
-const FLEET_BASE = "http://localhost:8002/fleet";
+const FLEET_BASE = "http://127.0.0.1:8002/fleet";
 
 // --- Types ---
 export interface FleetVehicle {

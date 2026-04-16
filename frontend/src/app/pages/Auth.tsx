@@ -16,6 +16,8 @@ export const Auth = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const [loading, setLoading] = useState(false);
+
   const heading = useMemo(() => {
     return mode === "signin" ? "Welcome back" : "Create your account";
   }, [mode]);
@@ -24,21 +26,23 @@ export const Auth = () => {
     return <Navigate to="/" replace />;
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setLoading(true);
 
-    const ok =
-      mode === "signin"
-        ? signIn(email.trim(), password)
-        : signUp(name.trim(), email.trim(), password);
-
-    if (!ok) {
-      setError(mode === "signin" ? "Enter email and password to continue." : "Use a valid name, email, and password (6+ chars).");
-      return;
+    try {
+      if (mode === "signin") {
+        await signIn(email.trim(), password);
+      } else {
+        await signUp(name.trim(), email.trim(), password);
+      }
+      navigate("/");
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    navigate("/");
   };
 
   return (
@@ -147,10 +151,11 @@ export const Auth = () => {
 
               <button
                 type="submit"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-70"
               >
                 <ShieldCheck className="h-4 w-4" />
-                {mode === "signin" ? "Sign In" : "Create Account"}
+                {loading ? "Processing..." : mode === "signin" ? "Sign In" : "Create Account"}
               </button>
             </form>
 
@@ -169,11 +174,13 @@ export const Auth = () => {
                   shape="pill"
                   onSuccess={async (credentialResponse) => {
                     const credential = credentialResponse.credential;
-                    if (!credential || !(await signInWithGoogleCredential(credential))) {
-                      setError("Google authentication failed. Please try again.");
-                      return;
+                    if (!credential) return;
+                    try {
+                      await signInWithGoogleCredential(credential);
+                      navigate("/");
+                    } catch (err: any) {
+                      setError(err.message || "Google authentication failed.");
                     }
-                    navigate("/");
                   }}
                   onError={() => setError("Google authentication failed. Please try again.")}
                 />
