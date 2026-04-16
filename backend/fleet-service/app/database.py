@@ -5,6 +5,7 @@ Same pattern as auth and items services.
 
 import os
 import logging
+import ssl
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -24,6 +25,11 @@ if not _raw_url:
 _clean_url = _raw_url.split("?")[0]
 ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+# Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=False,
@@ -31,7 +37,7 @@ engine = create_async_engine(
     max_overflow=10,
     pool_pre_ping=True,
     connect_args={
-        "ssl": True,
+        "ssl": ssl_context,
         "timeout": 60,
         "statement_cache_size": 0
     },
