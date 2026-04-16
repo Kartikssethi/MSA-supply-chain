@@ -4,6 +4,7 @@ app/database.py — Auth Service's own DB connection.
 
 import os
 import logging
+import ssl
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -21,13 +22,20 @@ if not _raw_url:
 _clean_url = _raw_url.split("?")[0]
 ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+# Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=False,
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
-    connect_args={"ssl": "require"},
+    connect_args={
+        "ssl": ssl_context,
+    },
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
