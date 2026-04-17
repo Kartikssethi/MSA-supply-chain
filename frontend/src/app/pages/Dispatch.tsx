@@ -18,7 +18,8 @@ export const Dispatch = () => {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
 
-  const API_URL = "http://127.0.0.1:8000";
+  // ⚠️ THE BROWSER CANNOT READ DOCKER HOSTNAMES. It must be localhost.
+  const API_URL = "http://localhost:8000";
 
   // 🔹 Load shipments
   const loadShipments = async () => {
