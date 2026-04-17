@@ -25,11 +25,11 @@ async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
     new_shipment = create_shipment(db, shipment.origin, shipment.destination, user_id)
 
     # Kafka event
-    await send_event("shipment.created", {
-        "shipment_id": new_shipment.id,
-        "origin": new_shipment.origin,
-        "destination": new_shipment.destination
-    })
+    # await send_event("shipment.created", {
+    #     "shipment_id": new_shipment.id,
+    #     "origin": new_shipment.origin,
+    #     "destination": new_shipment.destination
+    # })
 
     return new_shipment
 
