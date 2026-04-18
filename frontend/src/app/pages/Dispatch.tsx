@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import {LocationInput} from "../api/LocationInput.tsx"
 
 type Shipment = {
   id: string;
@@ -31,6 +32,9 @@ export const Dispatch = () => {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [name, setName] = useState('');
+
+  const [originData, setOriginData] = useState<any>(null);
+  const [destinationData, setDestinationData] = useState<any>(null);
 
   // ⚠️ THE BROWSER CANNOT READ DOCKER HOSTNAMES. It must be localhost.
   const API_URL = "http://localhost:8000";
@@ -65,7 +69,7 @@ export const Dispatch = () => {
   // ================================
   const loadDrivers = async () => {
     try {
-      const res = await fetch(`${API_URL}/drivers`);
+      const res = await fetch(`http://localhost:8002/fleet/drivers`);
       if (!res.ok) throw new Error("Failed to fetch drivers");
 
       const data = await res.json();
@@ -107,7 +111,16 @@ export const Dispatch = () => {
       const res = await fetch(`${API_URL}/shipments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin, destination, name, driver: null, user_id }),
+        body: JSON.stringify({
+        name,
+        origin: originData?.name,
+        origin_lat: originData?.lat,
+        origin_lng: originData?.lng,
+        destination: destinationData?.name,
+        destination_lat: destinationData?.lat,
+        destination_lng: destinationData?.lng,
+        user_id
+      })
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -124,6 +137,9 @@ export const Dispatch = () => {
       setOrigin('');
       setDestination('');
 
+      setOriginData(null)
+      setDestinationData(null)
+
     } catch (err: any) {
       console.error("CREATE ERROR:", err);
       setShipments(prev => prev.filter(s => s.id !== tempShipment.id));
@@ -136,7 +152,7 @@ export const Dispatch = () => {
   // ================================
   // 🔹 ASSIGN DRIVER
   // ================================
-  const assignDriver = async (driverId: string) => {
+  const assignDriver = async (driver: any) => {
     try {
       if (!selectedShipment) return;
 
@@ -145,18 +161,24 @@ export const Dispatch = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driver_id: driverId }),
+          body: JSON.stringify({ driver_name: driver.id }),
         }
       );
 
-      if (!res.ok) throw new Error("Failed to assign driver");
+      const data = await res.json();
+
+      if (!res.ok) {
+      console.error("backend error:", data)
+      throw new Error(data.detail || "failed to assign driver");
+      }
+
 
       await loadShipments();
       setSelectedShipment(null);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("ASSIGN ERROR:", err);
-      alert("Failed to assign driver");
+      alert(err.message || "Failed to assign driver");
     }
   };
 
@@ -219,25 +241,25 @@ export const Dispatch = () => {
           className="border p-2 rounded w-full"
         />
 
-        <input
-          type="text"
-          placeholder="Origin"
-          value={origin}
-          onChange={(e) => setOrigin(e.target.value)}
-          className="border p-2 rounded w-full"
+        <LocationInput
+          placeholder="Search Origin"
+          onSelect={(loc) => {
+            setOrigin(loc.name);
+            setOriginData(loc);
+          }}
         />
 
-        <input
-          type="text"
-          placeholder="Destination"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          className="border p-2 rounded w-full"
+        <LocationInput
+          placeholder="Search Destination"
+          onSelect={(loc) => {
+            setDestination(loc.name);
+            setDestinationData(loc);
+          }}
         />
 
         <button
           onClick={createShipment}
-          disabled={creating || !origin || !destination || !name}
+          disabled={creating || !originData || !destinationData || !name}
           className={`px-4 py-2 rounded text-white ${
             creating ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-500"
           }`}
@@ -326,7 +348,7 @@ export const Dispatch = () => {
                     </div>
 
                     <button
-                      onClick={() => assignDriver(d.id)}
+                      onClick={() => assignDriver(d)}
                       className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-500"
                     >
                       Assign

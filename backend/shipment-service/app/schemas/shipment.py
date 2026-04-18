@@ -21,3 +21,6 @@ class ShipmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class AssignDriverRequest(BaseModel):
+    driver_name: str
