@@ -9,6 +9,8 @@ class Shipment(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     origin = Column(String, nullable=False)
     destination = Column(String, nullable=False)
+    driver = Column(String, nullable=False)
+    name = Column(String, nullable=False, default="none")
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(String, nullable=False)

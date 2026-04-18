@@ -22,7 +22,7 @@ async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
     
     user_id = shipment.user_id
 
-    new_shipment = create_shipment(db, shipment.origin, shipment.destination, user_id)
+    new_shipment = create_shipment(db, shipment.origin, shipment.destination, shipment.name,shipment.driver, user_id)
 
     # Kafka event
     # await send_event("shipment.created", {
