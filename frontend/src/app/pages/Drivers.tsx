@@ -22,7 +22,7 @@ export const Drivers = () => {
     return drivers.filter(
       (d) =>
         d.name.toLowerCase().includes(s) ||
-        d.license_number.toLowerCase().includes(s) ||
+        d.license.toLowerCase().includes(s) ||
         (d.assigned_vehicle_plate || '').toLowerCase().includes(s)
     );
   }, [drivers, searchTerm]);
@@ -49,7 +49,7 @@ export const Drivers = () => {
     try {
       await fleetCreateDriver({
         name: formData.get('name') as string,
-        license_number: formData.get('license_number') as string,
+        license: formData.get('license') as string,
       });
       setIsAddModalOpen(false);
       loadDrivers();
@@ -138,19 +138,19 @@ export const Drivers = () => {
                       <span className="font-medium text-slate-900">{driver.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-500 font-mono">{driver.license_number}</td>
+                  <td className="px-6 py-4 text-sm text-slate-500 font-mono">{driver.license}</td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold inline-flex items-center gap-1.5",
-                      driver.is_active
+                      driver.status
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : "bg-slate-100 text-slate-600 border border-slate-200"
                     )}>
                       <span className={cn(
                         "w-1.5 h-1.5 rounded-full",
-                        driver.is_active ? "bg-emerald-500" : "bg-slate-400"
+                        driver.status ? "bg-emerald-500" : "bg-slate-400"
                       )}></span>
-                      {driver.is_active ? 'Active' : 'Inactive'}
+                      {driver.status === "Active"? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -201,11 +201,11 @@ export const Drivers = () => {
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">License Number</p>
-                <p className="mt-1 text-sm font-mono text-slate-700">{selectedDriver.license_number}</p>
+                <p className="mt-1 text-sm font-mono text-slate-700">{selectedDriver.license}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Status</p>
-                <p className="mt-1 text-sm text-slate-700">{selectedDriver.is_active ? 'Active' : 'Inactive'}</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedDriver.status === "Active" ? 'Active' : 'Inactive'}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Assigned Vehicle</p>
@@ -236,7 +236,7 @@ export const Drivers = () => {
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">License Number</label>
-                <input required name="license_number" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 placeholder:text-slate-400 transition-all" placeholder="CDL-123456" />
+                <input required name="license" type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 placeholder:text-slate-400 transition-all" placeholder="CDL-123456" />
               </div>
               <div className="pt-6 flex gap-3 justify-end">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-5 py-2.5 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">Cancel</button>

@@ -18,7 +18,7 @@ router = APIRouter()
 # --- Pydantic Schemas ---
 class DriverCreate(BaseModel):
     name: str
-    license_number: str
+    license: str
 
 class VehicleCreate(BaseModel):
     plate_number: str
@@ -28,8 +28,8 @@ class VehicleCreate(BaseModel):
 class DriverOut(BaseModel):
     id: str
     name: str
-    license_number: str
-    is_active: bool
+    license: str
+    status: str
     assigned_vehicle_plate: str | None = None
 
     class Config:
@@ -117,8 +117,8 @@ async def list_drivers(db: AsyncSession = Depends(get_db)):
         out.append(DriverOut(
             id=str(d.id),
             name=d.name,
-            license_number=d.license_number,
-            is_active=d.is_active,
+            license=d.license,
+            status=d.status,
             assigned_vehicle_plate=veh.plate_number if veh else None,
         ))
     return out
@@ -126,22 +126,22 @@ async def list_drivers(db: AsyncSession = Depends(get_db)):
 @router.post("/drivers")
 async def create_driver(data: DriverCreate, db: AsyncSession = Depends(get_db)):
     try:
-        driver = Driver(**data.model_dump())
+        driver = Driver(**data.model_dump(), status = "ACTIVE")
         db.add(driver)
         await db.commit()
         await db.refresh(driver)
         return DriverOut(
             id=str(driver.id),
             name=driver.name,
-            license_number=driver.license_number,
-            is_active=driver.is_active,
+            license=driver.license,
+            status=driver.status,
             assigned_vehicle_plate=None,
         )
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
             status_code=400,
-            detail=f"Driver with license {data.license_number} already exists."
+            detail=f"Driver with license {data.license} already exists."
         )
 
 @router.delete("/drivers/{driver_id}")

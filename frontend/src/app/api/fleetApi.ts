@@ -19,9 +19,9 @@ export interface FleetVehicle {
 export interface FleetDriver {
   id: string;
   name: string;
-  license_number: string;
-  is_active: boolean;
-  assigned_vehicle_plate: string | null;
+  license: string;
+  status: string;
+  assigned_vehicle_plate?: string | null;
 }
 
 // --- Vehicles ---
@@ -64,7 +64,7 @@ export const fleetGetDrivers = async (): Promise<FleetDriver[]> => {
 
 export const fleetCreateDriver = async (data: {
   name: string;
-  license_number: string;
+  license: string;
 }): Promise<FleetDriver> => {
   const res = await fetch(`${FLEET_BASE}/drivers`, {
     method: "POST",

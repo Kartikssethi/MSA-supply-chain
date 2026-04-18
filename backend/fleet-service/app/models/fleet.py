@@ -13,8 +13,8 @@ class Driver(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
-    license_number = Column(String, unique=True, nullable=False)
-    is_active = Column(Boolean, default=True)
+    license = Column(String, unique=True, nullable=False)
+    status = Column(String, default=True)
     
     # Relationship with Vehicle
     current_vehicle = relationship("Vehicle", back_populates="current_driver", uselist=False)
