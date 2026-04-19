@@ -186,6 +186,32 @@ export const Dispatch = () => {
   };
 
   // ================================
+  // 🔹 SIMULATE DRIVE
+  // ================================
+  const simulateDrive = async (s: Shipment) => {
+    try {
+      const res = await fetch(`http://localhost:8004/simulate/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          driver_id: s.driver_id,
+          driver_name: s.driver_name,
+          origin_lat: s.origin_lat,
+          origin_lng: s.origin_long,
+          destination_lat: s.destination_lat,
+          destination_lng: s.destination_long
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to start simulation");
+      alert(data.message + " Check the Tracking tab!");
+    } catch (err: any) {
+      console.error("SIMULATE ERROR:", err);
+      alert(err.message || "Failed to start simulation");
+    }
+  };
+
+  // ================================
   // 🔹 INITIAL LOAD
   // ================================
   useEffect(() => {
@@ -292,16 +318,24 @@ export const Dispatch = () => {
             <tbody>
               {shipments.map((s) => (
                 <tr key={s.id} className="border-b">
-                  <td>{s.id}</td>
+                  <td>{s.id.substring(0, 8)}...</td>
                   <td>{s.origin}</td>
                   <td>{s.destination}</td>
                   <td>{s.name || 'Unnamed'}</td>
 
                   <td>
                     {s.driver_name ? (
-                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                        {s.driver_name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          {s.driver_name}
+                        </span>
+                        <button
+                          onClick={() => simulateDrive(s)}
+                          className="bg-purple-100 text-purple-700 border border-purple-200 px-2 py-1 rounded hover:bg-purple-200 text-sm whitespace-nowrap"
+                        >
+                          ▶ Simulate Drive
+                        </button>
+                      </div>
                     ) : (
                       <button
                         onClick={() => setSelectedShipment(s)}

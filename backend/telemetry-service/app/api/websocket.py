@@ -1,7 +1,7 @@
 import logging
 import json
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict
 
@@ -147,3 +147,43 @@ async def flush_cache_to_db(db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     return {"status": "success", "flushed_records": len(records)}
+
+
+# --- SIMULATION API ---
+
+from pydantic import BaseModel
+from fastapi import BackgroundTasks
+from app.simulation import fetch_route_osrm, simulate_driver_trip
+
+class SimulationRequest(BaseModel):
+    driver_id: str
+    driver_name: str
+    origin_lat: float
+    origin_lng: float
+    destination_lat: float
+    destination_lng: float
+
+@router.post("/simulate/start")
+async def start_simulation(req: SimulationRequest, background_tasks: BackgroundTasks):
+    """
+    Kicks off an active trajectory over the road network between Origin and Destination.
+    """
+    coords, duration, distance = await fetch_route_osrm(
+        origin_lng=req.origin_lng,
+        origin_lat=req.origin_lat,
+        dest_lng=req.destination_lng,
+        dest_lat=req.destination_lat
+    )
+    
+    if not coords:
+        raise HTTPException(status_code=400, detail="Could not calculate an A* Road Route between these coordinates.")
+
+    # Spawn background task
+    background_tasks.add_task(simulate_driver_trip, req.driver_id, req.driver_name, coords, duration)
+
+    return {
+        "message": "Simulation started driving along A* path.",
+        "duration_sec": duration,
+        "distance_meters": distance,
+        "steps": len(coords)
+    }
