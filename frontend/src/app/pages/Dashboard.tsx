@@ -10,6 +10,9 @@ export const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [visibleDays, setVisibleDays] = useState(7);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationToast, setShowNotificationToast] = useState(false);
+
 
   const filteredTripsPerDayData = stats
     ? stats.tripsPerDayData.slice(-visibleDays)
@@ -34,15 +37,56 @@ export const Dashboard = () => {
     : [];
 
   useEffect(() => {
+    
     apiGetDashboardStats().then(data => {
       setStats(data);
       setLoading(false);
     });
+
+    
+    // Connect to notification-service WebSocket
+    const socket = io('http://localhost:8000', {
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5
+    });
+
+    // Listen for real-time shipment updates
+    socket.on('shipment_update', (data) => {
+      const newNotification = {
+        id: data.shipment_id,
+        message: `New shipment from ${data.origin} to ${data.destination}`,
+        timestamp: new Date(),
+        ...data
+      };
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      setShowNotificationToast(true);
+      
+      // Auto-hide toast after 5 seconds
+      setTimeout(() => setShowNotificationToast(false), 5000);
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   if (loading) return <div className="animate-pulse text-slate-600 font-medium">Loading dashboard telemetry...</div>;
 
   return (
+    <div className="space-y-6 max-w-7xl mx-auto w-full">
+      {/* Notification Toast */}
+      {showNotificationToast && notifications.length > 0 && (
+        <div className="fixed top-20 right-6 bg-emerald-50 border border-emerald-200 rounded-xl shadow-lg p-4 z-50 animate-slide-in max-w-sm">
+          <div className="flex items-start gap-3">
+            <Bell className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">{notifications[0].message}</p>
+              <p className="text-xs text-emerald-700 mt-1">{notifications[0].timestamp.toLocaleTimeString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
     <div className="space-y-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm md:flex-row md:items-end md:justify-between">
         <div>
@@ -213,6 +257,7 @@ export const Dashboard = () => {
         </div>
       </div>
     </div>
+  </div>
   );
 };
 

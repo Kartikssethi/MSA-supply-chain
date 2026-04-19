@@ -37,7 +37,7 @@ engine = create_async_engine(
     max_overflow=10,
     pool_pre_ping=True,
     connect_args={
-        "ssl": ssl_context,
+        "ssl": False,
         "timeout": 60,
         "statement_cache_size": 0
     },
