@@ -27,6 +27,15 @@ services:
       - ./backend/fleet-service/.env
     restart: always
 
+  maintenance-service:
+    build: ./backend/maintenance-service
+    container_name: maintenance-service
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./backend/maintenance-service/.env
+    restart: always
+    
   telemetry-service:
     build: ./backend/telemetry-service
     container_name: telemetry-service

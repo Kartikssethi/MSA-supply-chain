@@ -18,30 +18,77 @@ export const Maintenance = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [r, v] = await Promise.all([apiGetMaintenance(), apiGetVehicles()]);
-    setRecords(r);
-    setVehicles(v);
-    setLoading(false);
+    try {
+      // Fetch from backend
+      const res = await fetch('http://127.0.0.1:8003/maintenance');
+      const records = res.ok ? await res.json() : [];
+      
+      // Fetch vehicles from mock API
+      const v = await apiGetVehicles();
+      
+      setRecords(records);
+      setVehicles(v);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddRecord = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!canLogMaintenance) return;
+  e.preventDefault();
+  if (!canLogMaintenance) return;
+
+  try {
     const formData = new FormData(e.currentTarget);
+
     const newRecord = {
-      vehicleId: formData.get('vehicleId') as string,
+      vehicleid: formData.get('vehicleid') as string,
       date: formData.get('date') as string,
       description: formData.get('description') as string,
       cost: Number(formData.get('cost')),
+      performed_by: currentUser?.name || 'Unknown User',
+      role: getCurrentRole(),
     };
-    await apiCreateMaintenance(
-      newRecord,
-      currentUser?.name || 'Unknown User',
-      getCurrentRole(),
-    );
+
+    console.log("SENDING TO BACKEND:", newRecord);
+
+    // Make actual API call to backend
+    const res = await fetch('http://127.0.0.1:8003/maintenance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRecord),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || 'Failed to create maintenance record');
+    }
+
+    const data = await res.json();
+    console.log("BACKEND RESPONSE:", data);
+
+    // ❗ IMPORTANT: only close modal if success
     setIsAddModalOpen(false);
-    loadData();
-  };
+
+    await loadData();
+
+  } catch (err: any) {
+  console.error("CREATE FAILED:", err);
+
+  let message = "Failed to create maintenance record";
+
+  if (typeof err?.message === "string") {
+    message = err.message;
+  } else if (typeof err === "string") {
+    message = err;
+  } else {
+    message = JSON.stringify(err);
+  }
+
+  alert(message);
+}
+};
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
@@ -176,7 +223,7 @@ export const Maintenance = () => {
             <form onSubmit={handleAddRecord} className="p-6 space-y-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Vehicle</label>
-                <select required name="vehicleId" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 appearance-none transition-all">
+                <select required name="vehicleid" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 appearance-none transition-all">
                   <option value="">Select vehicle</option>
                   {vehicles.map(v => (
                     <option key={v.id} value={v.id}>{v.number}</option>

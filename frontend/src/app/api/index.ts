@@ -204,7 +204,7 @@ export const apiGetMaintenance = async () => {
 };
 
 export const apiCreateMaintenance = async (
-  record: Omit<MaintenanceRecord, 'id'>,
+  record: any,
   actor: string,
   actorRole: UserRole,
 ) => {
@@ -212,8 +212,9 @@ export const apiCreateMaintenance = async (
   const newRecord = { ...record, id: `m${Date.now()}` };
   maintenance.push(newRecord);
   
-  // Update vehicle status
-  const vehicleIndex = vehicles.findIndex(v => v.id === record.vehicleId);
+  // Update vehicle status - handle both vehicleId and vehicleid
+  const vehicleId = record.vehicleId || record.vehicleid;
+  const vehicleIndex = vehicles.findIndex(v => v.id === vehicleId);
   if (vehicleIndex >= 0) {
     vehicles[vehicleIndex] = { ...vehicles[vehicleIndex], status: 'Maintenance' };
   }
@@ -222,7 +223,7 @@ export const apiCreateMaintenance = async (
     'Maintenance Logged',
     'Maintenance',
     newRecord.id,
-    `Logged maintenance for ${record.vehicleId.toUpperCase()} costing $${record.cost}.`,
+    `Logged maintenance for ${(vehicleId || 'UNKNOWN').toUpperCase()} costing $${record.cost}.`,
     actor,
     actorRole,
   );

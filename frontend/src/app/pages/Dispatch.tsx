@@ -10,7 +10,6 @@ type Shipment = {
   destination_lat: number;
   destination_long: number;
   
-
   status: string;
   name?: string;
   
