@@ -157,6 +157,7 @@ from app.simulation import fetch_route_osrm, simulate_driver_trip
 
 class SimulationRequest(BaseModel):
     driver_id: str
+    driver_name: str
     origin_lat: float
     origin_lng: float
     destination_lat: float
@@ -178,7 +179,7 @@ async def start_simulation(req: SimulationRequest, background_tasks: BackgroundT
         raise HTTPException(status_code=400, detail="Could not calculate an A* Road Route between these coordinates.")
 
     # Spawn background task
-    background_tasks.add_task(simulate_driver_trip, req.driver_id, coords, duration)
+    background_tasks.add_task(simulate_driver_trip, req.driver_id, req.driver_name, coords, duration)
 
     return {
         "message": "Simulation started driving along A* path.",

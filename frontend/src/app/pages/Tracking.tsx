@@ -151,7 +151,7 @@ export const Tracking = () => {
                   >
                     <Tooltip permanent direction="top" offset={[0, -40]}>
                       <div className="font-bold text-center">
-                        <div>{driver.name}</div>
+                        <div>{loc.driver_name || driver.name}</div>
                         <div className="text-[10px] text-emerald-600 border-t mt-0.5 pt-0.5">{Math.round(loc.speed)} mph</div>
                       </div>
                     </Tooltip>

@@ -195,6 +195,7 @@ export const Dispatch = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           driver_id: s.driver_id,
+          driver_name: s.driver_name,
           origin_lat: s.origin_lat,
           origin_lng: s.origin_long,
           destination_lat: s.destination_lat,

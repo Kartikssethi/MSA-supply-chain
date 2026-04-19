@@ -31,7 +31,7 @@ async def fetch_route_osrm(origin_lng: float, origin_lat: float, dest_lng: float
         logger.error(f"Failed to fetch route from OSRM: {e}")
     return None, None, None
 
-async def simulate_driver_trip(driver_id: str, coordinates: list, duration_sec: float):
+async def simulate_driver_trip(driver_id: str, driver_name: str, coordinates: list, duration_sec: float):
     """
     Simulates a driver moving along the coordinates.
     Sends real-time websocket and redis updates.
@@ -78,6 +78,7 @@ async def simulate_driver_trip(driver_id: str, coordinates: list, duration_sec: 
 
             location_data = {
                 "driver_id": driver_id,
+                "driver_name": driver_name,
                 "latitude": lat,
                 "longitude": lng,
                 "speed": speed,
