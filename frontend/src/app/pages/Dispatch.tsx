@@ -7,7 +7,10 @@ type Shipment = {
   destination: string;
   status: string;
   name?: string;
-  driver?: string | null;
+
+  driver_id?: string | null;
+  driver_name?: string|null;
+
   user_id?: string;
   created_at?: string;
 };
@@ -17,7 +20,7 @@ type Driver = {
   name: string;
   license: string;
   status: string;
-  assignment?: string | null;
+  assigned_vehicle_plate?: string | null;
 };
 
 export const Dispatch = () => {
@@ -75,7 +78,7 @@ export const Dispatch = () => {
       const data = await res.json();
 
       const available = data.filter(
-        (d: Driver) => d.status === "ACTIVE" && !d.assignment
+        (d: Driver) => d.status === "ACTIVE" && !d.assigned_vehicle_plate
       );
 
       setDrivers(available);
@@ -99,7 +102,7 @@ export const Dispatch = () => {
       destination,
       name,
       status: "pending",
-      driver: null
+      driver_name: null
     };
 
     setShipments(prev => [tempShipment, ...prev]);
@@ -115,10 +118,10 @@ export const Dispatch = () => {
         name,
         origin: originData?.name,
         origin_lat: originData?.lat,
-        origin_lng: originData?.lng,
+        origin_long: originData?.long,
         destination: destinationData?.name,
         destination_lat: destinationData?.lat,
-        destination_lng: destinationData?.lng,
+        destination_long: destinationData?.long,
         user_id
       })
       });
@@ -161,7 +164,7 @@ export const Dispatch = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driver_name: driver.id }),
+          body: JSON.stringify({ driver_id: driver.id }),
         }
       );
 
@@ -295,9 +298,9 @@ export const Dispatch = () => {
                   <td>{s.name || 'Unnamed'}</td>
 
                   <td>
-                    {s.driver ? (
+                    {s.driver_name ? (
                       <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                        {s.driver}
+                        {s.driver_name}
                       </span>
                     ) : (
                       <button

@@ -3,7 +3,7 @@ import { useState } from "react";
 type Location = {
   name: string;
   lat: number;
-  lng: number;
+  long: number;
 };
 
 export const LocationInput = ({
@@ -34,9 +34,11 @@ export const LocationInput = ({
 
   const handleSelect = (item: any) => {
     const loc = {
-      name: item.properties.name + ", " + item.properties.city,
+      name: item.properties.city 
+        ? `${item.properties.name}, ${item.properties.city}`
+        : item.properties.name,
       lat: item.geometry.coordinates[1],
-      lng: item.geometry.coordinates[0],
+      long: item.geometry.coordinates[0],
     };
 
     setQuery(loc.name);
@@ -62,7 +64,7 @@ export const LocationInput = ({
               onClick={() => handleSelect(item)}
               className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
             >
-              {item.properties.name}, {item.properties.city}
+              {item.properties.name}{item.properties.city ? `, ${item.properties.city}` : ''}
             </div>
           ))}
         </div>
