@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { Map as MapIcon, Navigation, Clock, Activity, Target } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { apiGetTracking, apiGetDrivers } from '../api';
 
 const customIcon = new L.Icon({
+// ... keep existing icon stuff
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
@@ -13,6 +14,20 @@ const customIcon = new L.Icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
 });
+
+const MapFitter = ({ liveLocations }: { liveLocations: any }) => {
+  const map = useMap();
+  useEffect(() => {
+    const locs: any[] = Object.values(liveLocations);
+    if (locs.length > 0) {
+      const bounds = L.latLngBounds(locs.map(l => [l.latitude, l.longitude]));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { animate: true, padding: [50, 50], maxZoom: 15 });
+      }
+    }
+  }, [Object.keys(liveLocations).length]); // Only fit bounds when a new driver appears
+  return null;
+};
 
 export const Tracking = () => {
   const [staticLocations, setStaticLocations] = useState<any[]>([]);
@@ -106,6 +121,7 @@ export const Tracking = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            <MapFitter liveLocations={liveLocations} />
             
             {/* Render Live WebSockets Drivers */}
             {Object.values(liveLocations).map((loc: any) => {
