@@ -54,7 +54,8 @@ def get_all(user_id:str, db: Session = Depends(get_db)):
     result = []
 
     for s in shipments:
-        driver_name = get_driver_name(s.driver_id) if s.driver_id else None
+        driver_id_str = str(s.driver_id) if s.driver_id else None
+        driver_name = get_driver_name(driver_id_str)
 
         result.append({
             "id": s.id,
@@ -66,7 +67,7 @@ def get_all(user_id:str, db: Session = Depends(get_db)):
             "destination_long": s.destination_long,
             "status": s.status,
             "name": s.name,
-            "driver_id": s.driver_id,
+            "driver_id": driver_id_str,
             "driver_name": driver_name,
             "user_id": s.user_id,
             "created_at": s.created_at
@@ -80,31 +81,55 @@ async def assign_driver(
     request: AssignDriverRequest,
     db: Session = Depends(get_db)):
     
-    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    try:
+        shipment_id_clean = shipment_id.strip()
+        shipment = db.query(Shipment).filter(Shipment.id == shipment_id_clean).first()
 
-    if not shipment:
-        raise HTTPException(status_code=404, detail="Shipment not found")
+        if not shipment:
+            all_ids = [s.id for s in db.query(Shipment).all()]
+            raise HTTPException(status_code=404, detail=f"Shipment not found for ID: '{shipment_id_clean}'. Available IDs: {all_ids}")
 
-    shipment.driver_id = request.driver_id
-    shipment.status = "assigned"
+        shipment.driver_id = request.driver_id
+        shipment.status = "assigned"
 
-    db.commit()
-    db.refresh(shipment)
+        db.commit()
+        db.refresh(shipment)
 
-    return {
-        "message": "Driver assigned successfully",
-        "shipment_id": shipment_id,
-        "driver": request.driver_name
-    }
+        return {
+            "message": "Driver assigned successfully",
+            "shipment_id": shipment_id,
+            "driver": request.driver_name
+        }
+    except HTTPException as e:
+        # Re-raise the HTTP exception so it propagates correctly (e.g. 404)
+        raise e
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"DEBUG ERROR: {str(e)}")
 
 def get_driver_name(driver_id: str):
+    if not driver_id:
+        return None
     try:
-        res = requests.get("http://localhost:8002/fleet/drivers")
+        # Use the internal docker compose hostname "fleet-service" instead of "localhost"
+        res = requests.get("http://fleet-service:8002/fleet/drivers", timeout=5)
+        if res.status_code != 200:
+            print(f"FAILED TO FETCH DRIVERS! Status: {res.status_code}, Body: {res.text}")
+            return None
+            
         drivers = res.json()
+        print(f"Fetched drivers inside shipment-service: {len(drivers)} drivers")
 
         for d in drivers:
-            if d["id"] == driver_id:
+            if str(d["id"]) == str(driver_id):
                 return d["name"]
-    except:
+        print(f"Driver ID {driver_id} not found in the fleet-service response!")
+    except Exception as e:
+        print(f"CRITICAL ERROR in get_driver_name: {e}")
         return None
     return None
+
+@router.get("/debug-shipments")
+def debug_shipments(db: Session = Depends(get_db)):
+    return db.query(Shipment).all()

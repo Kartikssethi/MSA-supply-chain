@@ -32,6 +32,8 @@ services:
     container_name: telemetry-service
     ports:
       - "8004:8004"
+    env_file:
+      - ./backend/telemetry-service/.env
     restart: always
 
   frontend:

@@ -43,8 +43,9 @@ export const Dashboard = () => {
       setLoading(false);
     });
 
-    
-    // Connect to notification-service WebSocket
+    // TODO: Connect to notification-service WebSocket when ready.
+    // socket.io-client is not currently installed, and 'io' is not defined.
+    /*
     const socket = io('http://localhost:8000', {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -52,7 +53,6 @@ export const Dashboard = () => {
       reconnectionAttempts: 5
     });
 
-    // Listen for real-time shipment updates
     socket.on('shipment_update', (data) => {
       const newNotification = {
         id: data.shipment_id,
@@ -64,11 +64,11 @@ export const Dashboard = () => {
       setNotifications(prev => [newNotification, ...prev]);
       setShowNotificationToast(true);
       
-      // Auto-hide toast after 5 seconds
       setTimeout(() => setShowNotificationToast(false), 5000);
     });
 
     return () => socket.disconnect();
+    */
   }, []);
 
   if (loading) return <div className="animate-pulse text-slate-600 font-medium">Loading dashboard telemetry...</div>;
