@@ -5,9 +5,15 @@ type Shipment = {
   id: string;
   origin: string;
   destination: string;
+  origin_lat: number;
+  origin_long: number;
+  destination_lat: number;
+  destination_long: number;
+  
+
   status: string;
   name?: string;
-
+  
   driver_id?: string | null;
   driver_name?: string|null;
 
@@ -100,8 +106,13 @@ export const Dispatch = () => {
       id: "temp-" + Date.now(),
       origin,
       destination,
+      origin_lat: originData?.lat,
+      origin_long: originData?.long,
+      destination_lat: destinationData?.lat,
+      destination_long: destinationData?.long,
       name,
       status: "pending",
+      
       driver_name: null
     };
 
@@ -197,9 +208,9 @@ export const Dispatch = () => {
           driver_id: s.driver_id,
           driver_name: s.driver_name,
           origin_lat: s.origin_lat,
-          origin_lng: s.origin_long,
+          origin_long: s.origin_long,
           destination_lat: s.destination_lat,
-          destination_lng: s.destination_long
+          destination_long: s.destination_long
         })
       });
       const data = await res.json();
