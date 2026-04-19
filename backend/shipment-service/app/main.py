@@ -26,18 +26,10 @@ app.include_router(router)
 # ✅ Startup event
 @app.on_event("startup")
 async def startup():
-    try:
-        await start_producer()
-        print("Kafka producer started")
-    except Exception as e:
-        print("Kafka not available, continuing without it:", e)
+    await start_producer()
 
 
 # ✅ Shutdown event
 @app.on_event("shutdown")
 async def shutdown():
-    try:
-        await stop_producer()
-        print("Kafka producer stopped")
-    except Exception as e:
-        print("Error stopping Kafka producer:", e)
+    await stop_producer()

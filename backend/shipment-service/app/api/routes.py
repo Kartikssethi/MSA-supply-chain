@@ -48,14 +48,24 @@ async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/shipments", response_model=list[ShipmentResponse])
-def get_all(user_id:str, db: Session = Depends(get_db)):
+def get_all(user_id: str, db: Session = Depends(get_db)):
     shipments = get_all_shipments(db, user_id)
 
-    result = []
+    # Optimization: Fetch all drivers once from fleet-service to avoid N+1 network calls
+    driver_map = {}
+    try:
+        # Useinternal docker compose hostname "fleet-service"
+        res = requests.get("http://fleet-service:8002/fleet/drivers", timeout=2)
+        if res.status_code == 200:
+            drivers_list = res.json()
+            driver_map = {str(d["id"]): d["name"] for d in drivers_list}
+    except Exception as e:
+        print(f"Warning: Could not connect to fleet-service for names: {e}")
 
+    result = []
     for s in shipments:
         driver_id_str = str(s.driver_id) if s.driver_id else None
-        driver_name = get_driver_name(driver_id_str)
+        driver_name = driver_map.get(driver_id_str) if driver_id_str else None
 
         result.append({
             "id": s.id,
@@ -108,27 +118,6 @@ async def assign_driver(
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"DEBUG ERROR: {str(e)}")
 
-def get_driver_name(driver_id: str):
-    if not driver_id:
-        return None
-    try:
-        # Use the internal docker compose hostname "fleet-service" instead of "localhost"
-        res = requests.get("http://fleet-service:8002/fleet/drivers", timeout=5)
-        if res.status_code != 200:
-            print(f"FAILED TO FETCH DRIVERS! Status: {res.status_code}, Body: {res.text}")
-            return None
-            
-        drivers = res.json()
-        print(f"Fetched drivers inside shipment-service: {len(drivers)} drivers")
-
-        for d in drivers:
-            if str(d["id"]) == str(driver_id):
-                return d["name"]
-        print(f"Driver ID {driver_id} not found in the fleet-service response!")
-    except Exception as e:
-        print(f"CRITICAL ERROR in get_driver_name: {e}")
-        return None
-    return None
 
 @router.get("/debug-shipments")
 def debug_shipments(db: Session = Depends(get_db)):

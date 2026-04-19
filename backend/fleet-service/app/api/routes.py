@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload, joinedload
 from app.database import get_db
 from app.models.fleet import Driver, Vehicle
 from app.redis_client import distributed_lock
@@ -51,15 +52,13 @@ class VehicleOut(BaseModel):
 
 @router.get("/vehicles", response_model=List[VehicleOut])
 async def list_vehicles(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Vehicle))
-    vehicles = result.scalars().all()
+    # Optimized: Use joinedload to fetch driver data together with vehicle in one query
+    result = await db.execute(
+        select(Vehicle).options(joinedload(Vehicle.current_driver))
+    )
+    vehicles = result.unique().scalars().all()
     out = []
     for v in vehicles:
-        driver_name = None
-        if v.current_driver_id:
-            dr = await db.execute(select(Driver).where(Driver.id == v.current_driver_id))
-            driver = dr.scalar_one_or_none()
-            driver_name = driver.name if driver else None
         out.append(VehicleOut(
             id=str(v.id),
             plate_number=v.plate_number,
@@ -67,7 +66,7 @@ async def list_vehicles(db: AsyncSession = Depends(get_db)):
             v_type=v.v_type,
             status=v.status,
             current_driver_id=str(v.current_driver_id) if v.current_driver_id else None,
-            current_driver_name=driver_name,
+            current_driver_name=v.current_driver.name if v.current_driver else None,
         ))
     return out
 
@@ -108,18 +107,19 @@ async def delete_vehicle(vehicle_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/drivers", response_model=List[DriverOut])
 async def list_drivers(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Driver))
-    drivers = result.scalars().all()
+    # Optimized: Use joinedload to fetch assigned vehicle data together with driver
+    result = await db.execute(
+        select(Driver).options(joinedload(Driver.current_vehicle))
+    )
+    drivers = result.unique().scalars().all()
     out = []
     for d in drivers:
-        veh_result = await db.execute(select(Vehicle).where(Vehicle.current_driver_id == d.id))
-        veh = veh_result.scalar_one_or_none()
         out.append(DriverOut(
             id=str(d.id),
             name=d.name,
             license=d.license,
             status=d.status,
-            assigned_vehicle_plate=veh.plate_number if veh else None,
+            assigned_vehicle_plate=d.current_vehicle.plate_number if d.current_vehicle else None,
         ))
     return out
 
