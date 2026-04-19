@@ -208,9 +208,10 @@ export const Dispatch = () => {
           driver_id: s.driver_id,
           driver_name: s.driver_name,
           origin_lat: s.origin_lat,
-          origin_long: s.origin_long,
-          destination_lat: s.destination_lat,
-          destination_long: s.destination_long
+          origin_lng: s.origin_long,
+          //Telemetry uses: Lng , Shipment uses: Long (Same thing But Different Hehehehe)
+          destination_lat: s.destination_lat, 
+          destination_lng: s.destination_long
         })
       });
       const data = await res.json();
