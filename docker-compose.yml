@@ -27,6 +27,13 @@ services:
       - ./backend/fleet-service/.env
     restart: always
 
+  telemetry-service:
+    build: ./backend/telemetry-service
+    container_name: telemetry-service
+    ports:
+      - "8004:8004"
+    restart: always
+
   frontend:
     build: ./frontend
     container_name: frontend
@@ -36,4 +43,5 @@ services:
       - auth-service
       - shipment-service
       - fleet-service
+      - telemetry-service
     restart: always
