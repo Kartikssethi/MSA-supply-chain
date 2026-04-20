@@ -187,3 +187,14 @@ async def start_simulation(req: SimulationRequest, background_tasks: BackgroundT
         "distance_meters": distance,
         "steps": len(coords)
     }
+
+@router.get("/simulate/active")
+async def get_active_simulations():
+    """
+    Returns the count and list of drivers currently being simulated.
+    """
+    from app.simulation import ACTIVE_SIMULATIONS
+    return {
+        "count": len(ACTIVE_SIMULATIONS),
+        "active_drivers": list(ACTIVE_SIMULATIONS)
+    }

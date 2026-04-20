@@ -3,8 +3,11 @@ import logging
 import httpx
 from datetime import datetime
 import json
+import uuid
+import random
 from app.api.websocket import manager
 from app.redis_client import set_driver_location
+from app.services.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,22 @@ async def simulate_driver_trip(driver_id: str, driver_name: str, coordinates: li
         return
     
     ACTIVE_SIMULATIONS.add(driver_id)
+    
+    # 1. Log Simulation Start to Audit Trail
+    if supabase:
+        try:
+            supabase.table("audit_logs").insert({
+                "id": str(uuid.uuid4()),
+                "actor": "Telemetry Simulation",
+                "actor_role": "System",
+                "action": "Simulation Started",
+                "entity_type": "Driver",
+                "entity_id": driver_id,
+                "summary": f"Live simulation started for driver {driver_name} (ID: {driver_id})",
+                "timestamp": datetime.utcnow().isoformat()
+            }).execute()
+        except Exception as e:
+            logger.error(f"Failed to log simulation start to audit trail: {e}")
     
     try:
         if not coordinates:
@@ -94,6 +113,33 @@ async def simulate_driver_trip(driver_id: str, driver_name: str, coordinates: li
                 "data": location_data
             })
 
+            # 3. Randomly trigger a mock exception (5% chance per step, max 1 per trip)
+            if supabase and idx > 0 and idx < total_steps - 1 and random.random() < 0.05:
+                # Check if we already created an exception for this simulation
+                # (Simple way: check local state or just let it happen occasionally)
+                try:
+                    # Only create one exception per simulation for demo purposes
+                    if not hasattr(simulate_driver_trip, f"exc_{driver_id}"):
+                        exc_types = ["Delay Risk", "Route Deviation", "Idle Breach"]
+                        exc_type = random.choice(exc_types)
+                        severity = "High" if exc_type == "Route Deviation" else "Medium"
+                        
+                        supabase.table("operational_exceptions").insert({
+                            "id": str(uuid.uuid4()),
+                            "trip_id": f"trip_sim_{driver_id[:8]}",
+                            "vehicle_id": f"veh_sim_{driver_id[:8]}",
+                            "severity": severity,
+                            "exception_type": exc_type,
+                            "status": "Open",
+                            "message": f"SIMULATED: {exc_type} detected during live trajectory for {driver_name}.",
+                            "eta_impact_minutes": random.randint(10, 45),
+                            "created_at": datetime.utcnow().isoformat()
+                        }).execute()
+                        setattr(simulate_driver_trip, f"exc_{driver_id}", True)
+                        logger.info(f"Triggered simulated exception: {exc_type}")
+                except Exception as e:
+                    logger.error(f"Failed to trigger simulated exception: {e}")
+
             # Wait before moving to next point
             await asyncio.sleep(sleep_interval)
 
@@ -101,6 +147,25 @@ async def simulate_driver_trip(driver_id: str, driver_name: str, coordinates: li
 
     finally:
         ACTIVE_SIMULATIONS.discard(driver_id)
+        # Cleanup exception tracking
+        if hasattr(simulate_driver_trip, f"exc_{driver_id}"):
+            delattr(simulate_driver_trip, f"exc_{driver_id}")
+        
+        # Log Simulation Completion
+        if supabase:
+            try:
+                supabase.table("audit_logs").insert({
+                    "id": str(uuid.uuid4()),
+                    "actor": "Telemetry Simulation",
+                    "actor_role": "System",
+                    "action": "Simulation Stopped",
+                    "entity_type": "Driver",
+                    "entity_id": driver_id,
+                    "summary": f"Simulation completed or stopped for driver {driver_name}",
+                    "timestamp": datetime.utcnow().isoformat()
+                }).execute()
+            except Exception as e:
+                logger.error(f"Failed to log simulation stop to audit trail: {e}")
 
 def stop_simulation(driver_id: str):
     ACTIVE_SIMULATIONS.discard(driver_id)

@@ -45,6 +45,15 @@ services:
       - ./backend/telemetry-service/.env
     restart: always
 
+  operations-center:
+    build: ./backend/operations-center
+    container_name: operations-center
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./backend/operations-center/.env
+    restart: always
+
   frontend:
     build: ./frontend
     container_name: frontend
@@ -55,4 +64,5 @@ services:
       - shipment-service
       - fleet-service
       - telemetry-service
+      - operations-center
     restart: always

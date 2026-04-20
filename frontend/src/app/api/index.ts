@@ -20,6 +20,7 @@ import {
 } from './mockData';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const OPERATIONS_CENTER_API = 'http://localhost:8005/operations';
 
 let vehicles = [...initialVehicles];
 let drivers = [...initialDrivers];
@@ -233,23 +234,18 @@ export const apiCreateMaintenance = async (
 
 // Operations API
 export const apiGetOperationsSnapshot = async () => {
-  await delay(400);
-  startTelemetryFeed();
-  const openExceptions = exceptionAlerts.filter((alert) => alert.status !== 'Resolved');
-  const totalDelay = openExceptions.reduce((sum, alert) => sum + alert.etaImpactMinutes, 0);
-  const avgDelay = openExceptions.length ? Math.round(totalDelay / openExceptions.length) : 0;
-
-  operationsKpiSnapshot = {
-    ...operationsKpiSnapshot,
-    activeTrips: trips.filter((trip) => trip.status === 'In Progress').length,
-    exceptionsOpen: openExceptions.length,
-    avgDelayMinutes: avgDelay,
-  };
-
-  return {
-    kpis: operationsKpiSnapshot,
-    alerts: [...exceptionAlerts],
-  };
+  try {
+    const res = await fetch(`${OPERATIONS_CENTER_API}/snapshot`);
+    if (!res.ok) throw new Error('Operations API failure');
+    return await res.json();
+  } catch (error) {
+    console.error('Failed to fetch operations snapshot:', error);
+    // Fallback to mock data for resilience
+    return {
+      kpis: operationsKpiSnapshot,
+      alerts: [...exceptionAlerts],
+    };
+  }
 };
 
 export const apiUpdateExceptionStatus = async (
@@ -258,21 +254,18 @@ export const apiUpdateExceptionStatus = async (
   actor: string,
   actorRole: UserRole,
 ) => {
-  await delay(300);
-  exceptionAlerts = exceptionAlerts.map((alert) => (
-    alert.id === id ? { ...alert, status } : alert
-  ));
-
-  createAuditEntry(
-    'Exception Updated',
-    'Exception',
-    id,
-    `Updated exception ${id.toUpperCase()} to ${status}.`,
-    actor,
-    actorRole,
-  );
-
-  return exceptionAlerts.find((alert) => alert.id === id) || null;
+  try {
+    const res = await fetch(`${OPERATIONS_CENTER_API}/alerts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, actor, actorRole })
+    });
+    if (!res.ok) throw new Error('Failed to update exception');
+    return await res.json();
+  } catch (error) {
+    console.error('Error updating exception:', error);
+    return null;
+  }
 };
 
 export const apiSubscribeToTelemetryAlerts = (subscriber: (alert: ExceptionAlert) => void) => {
@@ -285,29 +278,29 @@ export const apiSubscribeToTelemetryAlerts = (subscriber: (alert: ExceptionAlert
 };
 
 export const apiGetAuditTrail = async () => {
-  await delay(250);
-  return [...auditTrail];
+  try {
+    const res = await fetch(`${OPERATIONS_CENTER_API}/audit-trail`);
+    if (!res.ok) throw new Error('Audit API failure');
+    return await res.json();
+  } catch (error) {
+    console.error('Failed to fetch audit trail:', error);
+    return [...auditTrail];
+  }
 };
 
 export const apiGetDispatchBoard = async () => {
-  await delay(350);
-
-  const assignableTrips = trips
-    .filter((trip) => trip.status === 'Planned')
-    .map((trip) => ({
-      ...trip,
-      driverName: drivers.find((driver) => driver.id === trip.driverId)?.name || 'Unassigned',
-      vehicleNumber: vehicles.find((vehicle) => vehicle.id === trip.vehicleId)?.number || 'Unassigned',
-    }));
-
-  const availableDrivers = drivers.filter((driver) => driver.status === 'Active');
-  const availableVehicles = vehicles.filter((vehicle) => vehicle.status === 'Available' || vehicle.status === 'In Transit');
-
-  return {
-    trips: assignableTrips,
-    drivers: availableDrivers,
-    vehicles: availableVehicles,
-  };
+  try {
+    const res = await fetch(`${OPERATIONS_CENTER_API}/dispatch`);
+    if (!res.ok) throw new Error('Dispatch API failure');
+    return await res.json();
+  } catch (error) {
+    console.error('Failed to fetch dispatch board:', error);
+    return {
+      trips: trips.filter(t => t.status === 'Planned'),
+      drivers: drivers.filter(d => d.status === 'Active'),
+      vehicles: vehicles.filter(v => v.status === 'Available'),
+    };
+  }
 };
 
 export const apiAssignTrip = async (
@@ -317,39 +310,16 @@ export const apiAssignTrip = async (
   actor: string,
   actorRole: UserRole,
 ) => {
-  await delay(300);
-
-  const tripIndex = trips.findIndex((trip) => trip.id === tripId);
-  if (tripIndex < 0) return null;
-
-  const previousDriverId = trips[tripIndex].driverId;
-  if (previousDriverId && previousDriverId !== driverId) {
-    const previousDriverIndex = drivers.findIndex((driver) => driver.id === previousDriverId);
-    if (previousDriverIndex >= 0) {
-      drivers[previousDriverIndex] = { ...drivers[previousDriverIndex], assignedVehicleId: null };
-    }
+  try {
+    const res = await fetch(`${OPERATIONS_CENTER_API}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId, driverId, vehicleId, actor, actorRole })
+    });
+    if (!res.ok) throw new Error('Assignment failed');
+    return await res.json();
+  } catch (error) {
+    console.error('Error assigning trip:', error);
+    return null;
   }
-
-  trips[tripIndex] = { ...trips[tripIndex], driverId, vehicleId };
-
-  const driverIndex = drivers.findIndex((driver) => driver.id === driverId);
-  if (driverIndex >= 0) {
-    drivers[driverIndex] = { ...drivers[driverIndex], assignedVehicleId: vehicleId };
-  }
-
-  const vehicleIndex = vehicles.findIndex((vehicle) => vehicle.id === vehicleId);
-  if (vehicleIndex >= 0) {
-    vehicles[vehicleIndex] = { ...vehicles[vehicleIndex], status: 'In Transit' };
-  }
-
-  createAuditEntry(
-    'Trip Assigned',
-    'Trip',
-    tripId,
-    `Assigned trip ${tripId.toUpperCase()} to ${driverId.toUpperCase()} using ${vehicleId.toUpperCase()}.`,
-    actor,
-    actorRole,
-  );
-
-  return { ...trips[tripIndex] };
 };

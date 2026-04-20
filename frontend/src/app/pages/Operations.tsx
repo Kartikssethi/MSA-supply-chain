@@ -50,7 +50,7 @@ export const Operations = () => {
   }, []);
 
   const filteredAlerts = useMemo(() => {
-    if (!snapshot) return [];
+    if (!snapshot || !snapshot.alerts) return [];
     if (statusFilter === 'All') return snapshot.alerts;
     return snapshot.alerts.filter((alert: ExceptionAlert) => alert.status === statusFilter);
   }, [snapshot, statusFilter]);
@@ -159,8 +159,8 @@ export const Operations = () => {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-700">
-                      <p className="font-medium">{alert.tripId.toUpperCase()}</p>
-                      <p className="mt-1 text-xs text-slate-500">Vehicle {alert.vehicleId.toUpperCase()}</p>
+                      <p className="font-medium">{(alert.tripId || '').toUpperCase()}</p>
+                      <p className="mt-1 text-xs text-slate-500">Vehicle {(alert.vehicleId || '').toUpperCase()}</p>
                     </td>
                     <td className="px-5 py-4 text-sm font-semibold text-amber-700">+{alert.etaImpactMinutes} min</td>
                     <td className="px-5 py-4">
