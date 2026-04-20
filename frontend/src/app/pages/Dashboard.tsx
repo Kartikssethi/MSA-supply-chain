@@ -1,136 +1,142 @@
 
-import { useState, useEffect } from 'react';
-import { Truck, Route, Users, Wrench, TrendingUp, TrendingDown } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Truck, Route, Users, Wrench, TrendingUp, TrendingDown, Bell } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend, ComposedChart, Line } from 'recharts';
 import { cn } from '../utils/classnames';
 
 const COLORS = ['#10b981', '#3b82f6', '#22d3ee', '#e2e8f0'];
 
 export const Dashboard = () => {
-  const [stats, setStats] = useState<any>({
-  totalVehicles: 0,
-  activeTrips: 0,
-  availableDrivers: 0,
-  vehiclesUnderMaintenance: 0,
-  tripsPerDayData: [],
-  deliveryPerformanceData: [],
-  vehicleUtilizationData: []
-});
   const [loading, setLoading] = useState(true);
   const [visibleDays, setVisibleDays] = useState(7);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationToast, setShowNotificationToast] = useState(false);
 
+  // Raw Data State
+  const [rawData, setRawData] = useState<any>({
+    shipments: [],
+    vehicles: [],
+    drivers: [],
+    maintenance: []
+  });
 
-  const filteredTripsPerDayData = stats
-    ? stats.tripsPerDayData.slice(-visibleDays)
-    : [];
+  const stats = useMemo(() => {
+    const { shipments, vehicles, drivers, maintenance } = rawData;
+    
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(now.getDate() - visibleDays);
 
-  const filteredDeliveryPerformanceData = stats
-    ? stats.deliveryPerformanceData.slice(-Math.max(2, Math.ceil(visibleDays / 2)))
-    : [];
+    // Helper to get date from entity
+    const getDate = (item: any) => item.shipment_date ? new Date(item.shipment_date) : new Date(item.created_at);
 
-  const operationsPulseData = stats
-    ? filteredTripsPerDayData.map((day: any, index: number) => {
-        const weekData = filteredDeliveryPerformanceData[index % filteredDeliveryPerformanceData.length];
-        const completionRate = weekData ? weekData.onTime : 90;
+    // 1. Filter Data by Cutoff
+    const filteredShipments = shipments.filter((s: any) => getDate(s) >= cutoff);
+    const filteredVehicles = vehicles; // Show all vehicles regardless of date window
 
-        return {
-          name: day.name,
-          planned: day.trips + 2,
-          completed: day.trips,
-          completionRate,
-        };
-      })
-    : [];
+    const vehiclesInMaintenance = new Set(maintenance.map((m: any) => m.vehicleId));
 
-  useEffect(() => {
-  const loadDashboard = async () => {
-    setLoading(true);
-
-    const userId = localStorage.getItem("user_id");
-
-    try {
-      const [shipmentsRes, vehiclesRes, driversRes, maintenanceRes] = await Promise.all([
-        fetch(`http://localhost:8000/shipments?user_id=${userId}`),
-        fetch(`http://localhost:8002/fleet/vehicles`),
-        fetch(`http://localhost:8002/fleet/drivers`),
-        fetch(`http://localhost:8003/maintenance`)
-      ]);
-
-      const shipmentsData = await shipmentsRes.json();
-      const shipments = Array.isArray(shipmentsData) ? shipmentsData : [];
-      const vehiclesData = await vehiclesRes.json();
-      const vehicles = Array.isArray(vehiclesData) ? vehiclesData : [];
-
-      const driversData = await driversRes.json();
-      const drivers = Array.isArray(driversData) ? driversData : [];
-
-      const maintenanceData = await maintenanceRes.json();
-      const maintenance = Array.isArray(maintenanceData) ? maintenanceData : [];
-      const vehiclesInMaintenance = new Set(maintenance.map((m: any) => m.vehicleId));
-
-      console.log("shipments:", shipments);
-      console.log("vehicles:", vehicles);
-      console.log("drivers:", drivers);
-
-      const tripsPerDayMap: Record<string, number> = {};
-
-shipments.forEach((s: any) => {
-  const day = new Date(s.created_at).toLocaleDateString("en-US", { weekday: "short" });
-  tripsPerDayMap[day] = (tripsPerDayMap[day] || 0) + 1;
-});
-
-const tripsPerDayData = Object.entries(tripsPerDayMap).map(([name, trips]) => ({
-  name,
-  trips
-}));
-const vehicleUtilizationData = [
-  { name: "Total", value: vehicles.length },
-  { name: "Maintenance", value: vehiclesInMaintenance.size }
-];
-const completed = shipments.filter((s: any) =>
-  s.status?.toLowerCase() === "completed"
-).length;
-
-const assigned = shipments.filter((s: any) =>
-  s.status?.toLowerCase() === "assigned"
-).length;
-
-const deliveryPerformanceData = [
-  { name: "Now", onTime: completed, delayed: assigned }
-];
-      // ✅ COMPUTE STATS HERE
-const computedStats = {
-  totalVehicles: vehicles.length,
-
-  activeTrips: shipments.filter((s: any) =>
-    s.status?.toLowerCase() === "assigned"
-  ).length,
-
-  availableDrivers: drivers.filter((d: any) =>
-    d.status?.toLowerCase() === "active"
-  ).length,
-
-  vehiclesUnderMaintenance: vehiclesInMaintenance.size,
-
-  tripsPerDayData,
-  deliveryPerformanceData,
-  vehicleUtilizationData
-};
-
-      setStats(computedStats);
-    } catch (err) {
-      console.error("Dashboard error:", err);
+    // 2. Generate Continuous Date Range for Charts
+    const tripsPerDayMap: Record<string, number> = {};
+    const deliveryPerfMap: Record<string, { onTime: number, delayed: number }> = {};
+    
+    for (let i = 0; i < visibleDays; i++) {
+      const d = new Date();
+      d.setDate(now.getDate() - (visibleDays - 1 - i));
+      const label = d.toLocaleDateString("en-US", { weekday: "short" });
+      tripsPerDayMap[label] = 0;
+      deliveryPerfMap[label] = { onTime: 0, delayed: 0 };
     }
 
-    setLoading(false);
-  };
+    filteredShipments.forEach((s: any) => {
+      const date = getDate(s);
+      const day = date.toLocaleDateString("en-US", { weekday: "short" });
+      if (tripsPerDayMap[day] !== undefined) {
+        tripsPerDayMap[day]++;
+        const status = s.status?.toLowerCase();
+        if (status === 'completed') deliveryPerfMap[day].onTime++;
+        if (status === 'assigned') deliveryPerfMap[day].delayed++;
+      }
+    });
 
-  loadDashboard();
-}, []);
+    const tripsPerDayData = Object.entries(tripsPerDayMap).map(([name, trips]) => ({
+      name,
+      trips
+    }));
 
-  if (loading) return <div className="animate-pulse text-slate-600 font-medium">Loading dashboard telemetry...</div>;
+    const deliveryPerformanceData = Object.entries(deliveryPerfMap).map(([name, perf]) => ({
+      name,
+      ...perf
+    }));
+
+    const vehicleUtilizationData = [
+      { name: "Total", value: vehicles.length },
+      { name: "Maintenance", value: vehiclesInMaintenance.size }
+    ];
+
+    // Compute status-based stats across all (not just filtered) to maintain card context
+    // or keep them filtered? The user said "Data Window", usually implies filtering cards too.
+    return {
+      totalVehicles: filteredVehicles.length,
+      activeTrips: filteredShipments.filter((s: any) => s.status?.toLowerCase() === "assigned").length,
+      availableDrivers: drivers.filter((d: any) => d.status?.toLowerCase() === "active").length,
+      vehiclesUnderMaintenance: Array.from(vehiclesInMaintenance).filter(id => filteredVehicles.some(v => v.id === id)).length,
+      tripsPerDayData,
+      deliveryPerformanceData,
+      vehicleUtilizationData
+    };
+  }, [rawData, visibleDays]);
+
+  const operationsPulseData = useMemo(() => {
+    if (!stats) return [];
+    return stats.tripsPerDayData.map((day: any, index: number) => {
+      const perf = stats.deliveryPerformanceData[index];
+      const total = perf.onTime + perf.delayed;
+      const completionRate = total > 0 ? Math.round((perf.onTime / total) * 100) : 100;
+
+      return {
+        name: day.name,
+        planned: day.trips + 2,
+        completed: day.trips,
+        completionRate,
+      };
+    });
+  }, [stats]);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true);
+      const userId = localStorage.getItem("user_id");
+
+      try {
+        const [shipmentsRes, vehiclesRes, driversRes, maintenanceRes] = await Promise.all([
+          fetch(`http://localhost:8000/shipments?user_id=${userId}`),
+          fetch(`http://localhost:8002/fleet/vehicles`),
+          fetch(`http://localhost:8002/fleet/drivers`),
+          fetch(`http://localhost:8003/maintenance`)
+        ]);
+
+        const shipments = await shipmentsRes.json();
+        const vehicles = await vehiclesRes.json();
+        const drivers = await driversRes.json();
+        const maintenance = await maintenanceRes.json();
+
+        setRawData({
+          shipments: Array.isArray(shipments) ? shipments : [],
+          vehicles: Array.isArray(vehicles) ? vehicles : [],
+          drivers: Array.isArray(drivers) ? drivers : [],
+          maintenance: Array.isArray(maintenance) ? maintenance : []
+        });
+      } catch (err) {
+        console.error("Dashboard error:", err);
+      }
+      setLoading(false);
+    };
+
+    loadDashboard();
+  }, []);
+
+  if (loading) return <div className="animate-pulse text-slate-600 font-medium p-8">Loading dashboard telemetry...</div>;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
@@ -146,7 +152,7 @@ const computedStats = {
           </div>
         </div>
       )}
-    <div className="space-y-6 max-w-7xl mx-auto w-full">
+
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Overview</h2>
@@ -160,8 +166,8 @@ const computedStats = {
           </div>
           <input
             type="range"
-            min={3}
-            max={7}
+            min={1}
+            max={30}
             step={1}
             value={visibleDays}
             onChange={(event) => setVisibleDays(Number(event.target.value))}
@@ -183,7 +189,7 @@ const computedStats = {
           <h3 className="text-xs font-semibold mb-6 text-slate-500 uppercase tracking-widest">Trips per Day</h3>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filteredTripsPerDayData}>
+              <AreaChart data={stats.tripsPerDayData}>
                 <defs>
                   <linearGradient id="colorTrips" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -231,7 +237,9 @@ const computedStats = {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none -mt-8">
-               <span className="text-2xl font-bold text-slate-900">{stats.vehicleUtilizationData?.[0]?.value || 0}%</span>
+               <span className="text-2xl font-bold text-slate-900">
+                  {stats.totalVehicles > 0 ? Math.round(((stats.totalVehicles - stats.vehiclesUnderMaintenance) / stats.totalVehicles) * 100) : 0}%
+               </span>
             </div>
           </div>
         </div>
@@ -240,7 +248,7 @@ const computedStats = {
           <h3 className="text-xs font-semibold mb-6 text-slate-500 uppercase tracking-widest">Delivery Performance</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredDeliveryPerformanceData}>
+              <BarChart data={stats.deliveryPerformanceData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
@@ -282,7 +290,7 @@ const computedStats = {
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  domain={[60, 100]}
+                  domain={[0, 100]}
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: '#0f766e', fontSize: 12 }}
@@ -316,7 +324,6 @@ const computedStats = {
         </div>
       </div>
     </div>
-  </div>
   );
 };
 

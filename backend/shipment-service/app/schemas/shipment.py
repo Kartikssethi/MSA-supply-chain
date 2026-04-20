@@ -12,6 +12,7 @@ class ShipmentCreate(BaseModel):
     destination_long: float
     name: str
     user_id: str
+    shipment_date: Optional[datetime] = None
 
 class ShipmentResponse(BaseModel):
     id: str
@@ -27,6 +28,7 @@ class ShipmentResponse(BaseModel):
     driver_name: str |None = None
     user_id: str
     created_at: datetime
+    shipment_date: Optional[datetime] = None
 
     @field_validator('id', 'user_id', 'driver_id', mode='before')
     @classmethod

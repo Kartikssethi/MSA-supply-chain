@@ -20,4 +20,5 @@ class Shipment(Base):
     name = Column(String, nullable=False, default="none")
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+    shipment_date = Column(DateTime, nullable=True)
     user_id = Column(String, nullable=False)

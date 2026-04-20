@@ -40,6 +40,7 @@ export const Dispatch = () => {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [name, setName] = useState('');
+  const [shipmentDate, setShipmentDate] = useState('');
 
   const [originData, setOriginData] = useState<any>(null);
   const [destinationData, setDestinationData] = useState<any>(null);
@@ -108,10 +109,11 @@ export const Dispatch = () => {
       origin_lat: originData?.lat,
       origin_long: originData?.long,
       destination_lat: destinationData?.lat,
+      //destination_lat: destinationData?.lat,
       destination_long: destinationData?.long,
       name,
       status: "pending",
-      
+      shipment_date: shipmentDate || new Date().toISOString(),
       driver_name: null
     };
 
@@ -132,7 +134,8 @@ export const Dispatch = () => {
         destination: destinationData?.name,
         destination_lat: destinationData?.lat,
         destination_long: destinationData?.long,
-        user_id
+        user_id,
+        shipment_date: shipmentDate || new Date().toISOString()
       })
       });
 
@@ -280,6 +283,16 @@ export const Dispatch = () => {
           onChange={(e) => setName(e.target.value)}
           className="border p-2 rounded w-full"
         />
+
+        <div className="flex flex-col space-y-1">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Shipment Date</label>
+          <input
+            type="datetime-local"
+            value={shipmentDate}
+            onChange={(e) => setShipmentDate(e.target.value)}
+            className="border p-2 rounded w-full"
+          />
+        </div>
 
         <LocationInput
           placeholder="Search Origin"

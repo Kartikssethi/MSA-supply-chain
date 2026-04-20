@@ -34,7 +34,8 @@ async def create(shipment: ShipmentCreate, db: Session = Depends(get_db)):
         shipment.origin_lat,
         shipment.origin_long,
         shipment.destination_lat,
-        shipment.destination_long
+        shipment.destination_long,
+        shipment.shipment_date
         )
 
     # Kafka event
@@ -80,7 +81,8 @@ def get_all(user_id: str, db: Session = Depends(get_db)):
             "driver_id": driver_id_str,
             "driver_name": driver_name,
             "user_id": s.user_id,
-            "created_at": s.created_at
+            "created_at": s.created_at,
+            "shipment_date": s.shipment_date
         })
     return result
 
