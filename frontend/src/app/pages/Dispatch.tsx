@@ -10,12 +10,12 @@ type Shipment = {
   origin_long: number;
   destination_lat: number;
   destination_long: number;
-  
+
   status: string;
   name?: string;
-  
+
   driver_id?: string | null;
-  driver_name?: string|null;
+  driver_name?: string | null;
 
   user_id?: string;
   created_at?: string;
@@ -36,11 +36,11 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
@@ -157,16 +157,16 @@ export const Dispatch = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-        name,
-        origin: originData?.name,
-        origin_lat: originData?.lat,
-        origin_long: originData?.long,
-        destination: destinationData?.name,
-        destination_lat: destinationData?.lat,
-        destination_long: destinationData?.long,
-        user_id,
-        shipment_date: shipmentDate || new Date().toISOString()
-      })
+          name,
+          origin: originData?.name,
+          origin_lat: originData?.lat,
+          origin_long: originData?.long,
+          destination: destinationData?.name,
+          destination_lat: destinationData?.lat,
+          destination_long: destinationData?.long,
+          user_id,
+          shipment_date: shipmentDate || new Date().toISOString()
+        })
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -242,7 +242,7 @@ export const Dispatch = () => {
           driver_name: s.driver_name,
           origin_lat: s.origin_lat,
           origin_lng: s.origin_long,
-          destination_lat: s.destination_lat, 
+          destination_lat: s.destination_lat,
           destination_lng: s.destination_long
         })
       });
@@ -378,11 +378,10 @@ export const Dispatch = () => {
             <button
               onClick={createShipment}
               disabled={creating || !originData || !destinationData || !name}
-              className={`w-full py-3 rounded-xl text-white font-bold text-sm transition-all shadow-lg ${
-                creating 
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
+              className={`w-full py-3 rounded-xl text-white font-bold text-sm transition-all shadow-lg ${creating
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                   : "bg-blue-600 hover:bg-blue-500 hover:shadow-blue-200 border-b-4 border-blue-700 active:border-b-0 active:translate-y-1"
-              }`}
+                }`}
             >
               {creating ? "Processing..." : "Confirm Shipment"}
             </button>
@@ -457,16 +456,14 @@ export const Dispatch = () => {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${
-                          s.status === 'pending' ? 'bg-amber-50 text-amber-700 ring-amber-700/10' :
-                          s.status === 'assigned' ? 'bg-blue-50 text-blue-700 ring-blue-700/10' :
-                          'bg-emerald-50 text-emerald-700 ring-emerald-700/10'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                             s.status === 'pending' ? 'bg-amber-500' :
-                             s.status === 'assigned' ? 'bg-blue-500' :
-                             'bg-emerald-500'
-                          }`} />
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${s.status === 'pending' ? 'bg-amber-50 text-amber-700 ring-amber-700/10' :
+                            s.status === 'assigned' ? 'bg-blue-50 text-blue-700 ring-blue-700/10' :
+                              'bg-emerald-50 text-emerald-700 ring-emerald-700/10'
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${s.status === 'pending' ? 'bg-amber-500' :
+                              s.status === 'assigned' ? 'bg-blue-500' :
+                                'bg-emerald-500'
+                            }`} />
                           {s.status}
                         </span>
                       </td>
@@ -488,7 +485,7 @@ export const Dispatch = () => {
                 <h2 className="text-xl font-bold text-slate-800 tracking-tight">Assign Fleet Resource</h2>
                 <p className="text-xs text-slate-500 font-medium">Shipment: {selectedShipment.name}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedShipment(null)}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
               >
