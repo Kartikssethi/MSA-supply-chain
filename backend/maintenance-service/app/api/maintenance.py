@@ -24,7 +24,7 @@ def get_maintenance():
             r = httpx.get(f"{FLEET_SERVICE_URL}/fleet/vehicles")
             if r.status_code == 200:
                 vehicles = r.json()
-                vehicle_map = {v["id"]: v["number"] for v in vehicles}
+                vehicle_map = {v["id"]: v["plate_number"] for v in vehicles}
         except:
             pass  # fallback if fleet service is down
 

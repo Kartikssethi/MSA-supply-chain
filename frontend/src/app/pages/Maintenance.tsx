@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Wrench, Plus, Calendar, AlertTriangle, FileText, CheckCircle2 } from 'lucide-react';
-import { apiGetMaintenance, apiCreateMaintenance, apiGetVehicles } from '../api';
-import type { Vehicle } from '../api/mockData';
+import { apiCreateMaintenance } from '../api';
+import type { FleetVehicle } from '../api/fleetApi';
 import { canPerform, getCurrentRole, getCurrentUser } from '../utils/auth';
 
 export const Maintenance = () => {
   const [records, setRecords] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const currentUser = getCurrentUser();
@@ -19,15 +19,17 @@ export const Maintenance = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch from backend
-      const res = await fetch('http://127.0.0.1:8003/maintenance');
-      const records = res.ok ? await res.json() : [];
+      // Fetch maintenance records and vehicles from backend
+      const [maintenanceRes, vehiclesRes] = await Promise.all([
+        fetch('http://127.0.0.1:8003/maintenance'),
+        fetch('http://127.0.0.1:8003/vehicles'),
+      ]);
       
-      // Fetch vehicles from mock API
-      const v = await apiGetVehicles();
+      const records = maintenanceRes.ok ? await maintenanceRes.json() : [];
+      const vehicles = vehiclesRes.ok ? await vehiclesRes.json() : [];
       
       setRecords(records);
-      setVehicles(v);
+      setVehicles(vehicles);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -113,49 +115,25 @@ export const Maintenance = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl flex items-start gap-4 relative overflow-hidden group shadow-sm">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <AlertTriangle className="w-16 h-16 text-amber-500" />
-          </div>
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-600">
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-          <div className="relative z-10">
-            <h3 className="font-bold text-slate-900 mb-1">Action Required</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">3 assets are due for inspection.</p>
-            <button className="mt-3 text-[10px] uppercase tracking-widest font-bold text-amber-600 hover:text-amber-500">View Schedule &rarr;</button>
-          </div>
-        </div>
+      <div className="bg-gradient-to-br from-emerald-50 to-blue-50 border border-emerald-200 p-6 rounded-2xl flex items-center gap-6 relative overflow-hidden shadow-sm w-full">
+  <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/50 to-blue-100/50 opacity-50"></div>
 
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl flex items-start gap-4 relative overflow-hidden group shadow-sm">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <CheckCircle2 className="w-16 h-16 text-emerald-500" />
-          </div>
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div className="relative z-10">
-            <h3 className="font-bold text-slate-900 mb-1">Cleared</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">TRK-1002 cleared for operation.</p>
-            <button className="mt-3 text-[10px] uppercase tracking-widest font-bold text-emerald-600 hover:text-emerald-500">View Report &rarr;</button>
-          </div>
-        </div>
+  <div className="p-4 bg-white/80 border border-emerald-300 rounded-xl text-emerald-700 relative z-10 shadow-sm backdrop-blur-sm">
+    <FileText className="w-6 h-6" />
+  </div>
 
-        <div className="bg-gradient-to-br from-emerald-50 to-blue-50 border border-emerald-200 p-6 rounded-2xl flex items-start gap-4 relative overflow-hidden shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/50 to-blue-100/50 opacity-50"></div>
-          <div className="p-3 bg-white/80 border border-emerald-300 rounded-xl text-emerald-700 relative z-10 shadow-sm backdrop-blur-sm">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div className="relative z-10">
-            <h3 className="font-bold text-slate-900 mb-1">Total Spent</h3>
-            <p className="text-3xl font-black text-slate-900 mt-1 tracking-tight">
-              ${records.reduce((acc, r) => acc + r.cost, 0).toLocaleString()}
-            </p>
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 mt-1 font-semibold">YTD Expenses</p>
-          </div>
-        </div>
-      </div>
+  <div className="relative z-10 flex flex-col">
+    <h3 className="font-bold text-slate-900 mb-1 text-lg">Total Spent</h3>
+
+    <p className="text-4xl font-black text-slate-900 tracking-tight">
+      ${records.reduce((acc, r) => acc + r.cost, 0).toLocaleString()}
+    </p>
+
+    <p className="text-xs uppercase tracking-widest text-slate-600 mt-1 font-semibold">
+      YTD Expenses
+    </p>
+  </div>
+</div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col w-full min-w-0 shadow-sm">
         <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -226,7 +204,9 @@ export const Maintenance = () => {
                 <select required name="vehicleid" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-slate-900 appearance-none transition-all">
                   <option value="">Select vehicle</option>
                   {vehicles.map(v => (
-                    <option key={v.id} value={v.id}>{v.number}</option>
+                    <option key={v.id} value={v.id}>
+                      {v.plate_number} {v.model ? `(${v.model})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>

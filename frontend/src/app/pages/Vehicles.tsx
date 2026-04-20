@@ -116,7 +116,7 @@ export const Vehicles = () => {
   };
 
   // Available drivers for assignment (not currently assigned to anything)
-  const availableDrivers = drivers.filter(d => !d.assigned_vehicle_plate && d.is_active);
+  const availableDrivers = drivers.filter(d => !d.assigned_vehicle_plate && d.status);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
@@ -330,7 +330,7 @@ export const Vehicles = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-sm font-medium text-slate-900">{driver.name}</p>
-                          <p className="text-xs text-slate-500 font-mono">{driver.license_number}</p>
+                          <p className="text-xs text-slate-500 font-mono">{driver.license}</p>
                         </div>
                       </div>
                       <span className="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
