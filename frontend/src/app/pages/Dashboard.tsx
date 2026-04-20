@@ -1,13 +1,21 @@
+
 import { useState, useEffect } from 'react';
 import { Truck, Route, Users, Wrench, TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend, ComposedChart, Line } from 'recharts';
-import { apiGetDashboardStats } from '../api';
 import { cn } from '../utils/classnames';
 
 const COLORS = ['#10b981', '#3b82f6', '#22d3ee', '#e2e8f0'];
 
 export const Dashboard = () => {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<any>({
+  totalVehicles: 0,
+  activeTrips: 0,
+  availableDrivers: 0,
+  vehiclesUnderMaintenance: 0,
+  tripsPerDayData: [],
+  deliveryPerformanceData: [],
+  vehicleUtilizationData: []
+});
   const [loading, setLoading] = useState(true);
   const [visibleDays, setVisibleDays] = useState(7);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -37,39 +45,90 @@ export const Dashboard = () => {
     : [];
 
   useEffect(() => {
-    
-    apiGetDashboardStats().then(data => {
-      setStats(data);
-      setLoading(false);
-    });
+  const loadDashboard = async () => {
+    setLoading(true);
 
-    // TODO: Connect to notification-service WebSocket when ready.
-    // socket.io-client is not currently installed, and 'io' is not defined.
-    /*
-    const socket = io('http://localhost:8000', {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
-    });
+    const userId = localStorage.getItem("user_id");
 
-    socket.on('shipment_update', (data) => {
-      const newNotification = {
-        id: data.shipment_id,
-        message: `New shipment from ${data.origin} to ${data.destination}`,
-        timestamp: new Date(),
-        ...data
-      };
-      
-      setNotifications(prev => [newNotification, ...prev]);
-      setShowNotificationToast(true);
-      
-      setTimeout(() => setShowNotificationToast(false), 5000);
-    });
+    try {
+      const [shipmentsRes, vehiclesRes, driversRes, maintenanceRes] = await Promise.all([
+        fetch(`http://localhost:8000/shipments?user_id=${userId}`),
+        fetch(`http://localhost:8002/fleet/vehicles`),
+        fetch(`http://localhost:8002/fleet/drivers`),
+        fetch(`http://localhost:8003/maintenance`)
+      ]);
 
-    return () => socket.disconnect();
-    */
-  }, []);
+      const shipmentsData = await shipmentsRes.json();
+      const shipments = Array.isArray(shipmentsData) ? shipmentsData : [];
+      const vehiclesData = await vehiclesRes.json();
+      const vehicles = Array.isArray(vehiclesData) ? vehiclesData : [];
+
+      const driversData = await driversRes.json();
+      const drivers = Array.isArray(driversData) ? driversData : [];
+
+      const maintenanceData = await maintenanceRes.json();
+      const maintenance = Array.isArray(maintenanceData) ? maintenanceData : [];
+      const vehiclesInMaintenance = new Set(maintenance.map((m: any) => m.vehicleId));
+
+      console.log("shipments:", shipments);
+      console.log("vehicles:", vehicles);
+      console.log("drivers:", drivers);
+
+      const tripsPerDayMap: Record<string, number> = {};
+
+shipments.forEach((s: any) => {
+  const day = new Date(s.created_at).toLocaleDateString("en-US", { weekday: "short" });
+  tripsPerDayMap[day] = (tripsPerDayMap[day] || 0) + 1;
+});
+
+const tripsPerDayData = Object.entries(tripsPerDayMap).map(([name, trips]) => ({
+  name,
+  trips
+}));
+const vehicleUtilizationData = [
+  { name: "Total", value: vehicles.length },
+  { name: "Maintenance", value: vehiclesInMaintenance.size }
+];
+const completed = shipments.filter((s: any) =>
+  s.status?.toLowerCase() === "completed"
+).length;
+
+const assigned = shipments.filter((s: any) =>
+  s.status?.toLowerCase() === "assigned"
+).length;
+
+const deliveryPerformanceData = [
+  { name: "Now", onTime: completed, delayed: assigned }
+];
+      // ✅ COMPUTE STATS HERE
+const computedStats = {
+  totalVehicles: vehicles.length,
+
+  activeTrips: shipments.filter((s: any) =>
+    s.status?.toLowerCase() === "assigned"
+  ).length,
+
+  availableDrivers: drivers.filter((d: any) =>
+    d.status?.toLowerCase() === "active"
+  ).length,
+
+  vehiclesUnderMaintenance: vehiclesInMaintenance.size,
+
+  tripsPerDayData,
+  deliveryPerformanceData,
+  vehicleUtilizationData
+};
+
+      setStats(computedStats);
+    } catch (err) {
+      console.error("Dashboard error:", err);
+    }
+
+    setLoading(false);
+  };
+
+  loadDashboard();
+}, []);
 
   if (loading) return <div className="animate-pulse text-slate-600 font-medium">Loading dashboard telemetry...</div>;
 
@@ -172,7 +231,7 @@ export const Dashboard = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none -mt-8">
-               <span className="text-2xl font-bold text-slate-900">{stats.vehicleUtilizationData[0].value}%</span>
+               <span className="text-2xl font-bold text-slate-900">{stats.vehicleUtilizationData?.[0]?.value || 0}%</span>
             </div>
           </div>
         </div>
