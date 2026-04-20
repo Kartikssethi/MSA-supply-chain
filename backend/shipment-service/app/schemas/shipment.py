@@ -29,6 +29,7 @@ class ShipmentResponse(BaseModel):
     user_id: str
     created_at: datetime
     shipment_date: Optional[datetime] = None
+    estimated_price: Optional[float] = None
 
     @field_validator('id', 'user_id', 'driver_id', mode='before')
     @classmethod

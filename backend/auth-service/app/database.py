@@ -19,13 +19,22 @@ _raw_url: str = os.getenv("DATABASE_URL", "")
 if not _raw_url:
     raise RuntimeError("DATABASE_URL is not set in auth-service/.env")
 
+_is_sqlite = _raw_url.startswith("sqlite")
 _clean_url = _raw_url.split("?")[0]
-ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+if _is_sqlite:
+    ASYNC_DATABASE_URL = _clean_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    connect_args = {}
+else:
+    ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connect_args = {
+        "ssl": ssl_context,
+        "statement_cache_size": 0,  # Required for PgBouncer/Supabase Pooler
+    }
 
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
@@ -33,11 +42,8 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
-    pool_recycle=300,  # Recycle connections every 5 minutes
-    connect_args={
-        "ssl": ssl_context,
-        "statement_cache_size": 0,  # Required for PgBouncer/Supabase Pooler
-    },
+    pool_recycle=300,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

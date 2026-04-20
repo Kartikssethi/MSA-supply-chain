@@ -82,7 +82,8 @@ def get_all(user_id: str, db: Session = Depends(get_db)):
             "driver_name": driver_name,
             "user_id": s.user_id,
             "created_at": s.created_at,
-            "shipment_date": s.shipment_date
+            "shipment_date": s.shipment_date,
+            "estimated_price": s.estimated_price
         })
     return result
 

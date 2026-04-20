@@ -21,4 +21,5 @@ class Shipment(Base):
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     shipment_date = Column(DateTime, nullable=True)
+    estimated_price = Column(Float, nullable=True)
     user_id = Column(String, nullable=False)

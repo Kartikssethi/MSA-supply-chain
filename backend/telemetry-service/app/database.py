@@ -23,13 +23,23 @@ if not _raw_url:
 
 # Strip query parameters (like ?pgbouncer=true) which cause TypeError in asyncpg
 # and prepare the async URL
+_is_sqlite = _raw_url.startswith("sqlite")
 _clean_url = _raw_url.split("?")[0]
-ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+if _is_sqlite:
+    ASYNC_DATABASE_URL = _clean_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    connect_args = {}
+else:
+    ASYNC_DATABASE_URL = _clean_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Create SSL context to handle self-signed certificates (common in Supabase/managed DBs)
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connect_args = {
+        "ssl": ssl_context,
+        "timeout": 60,
+        "statement_cache_size": 0
+    }
 
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
@@ -37,11 +47,7 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
-    connect_args={
-        "ssl": ssl_context,
-        "timeout": 60,
-        "statement_cache_size": 0
-    },
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
